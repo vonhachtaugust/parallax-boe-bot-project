@@ -18,6 +18,24 @@ int numIterations;
 int maxNumIterations = 50;
 int standardForwardSpeed = 500;
 int standardRotationSpeed = 200;
+int standardBackwardSpeed = -standardForwardSpeed;
+int moveBackwardTimer=200;
+int trunTimer=100;
+
+/*
+ * Turn over after the Robot is inside the back area
+ */
+void turnAwayFromBlackArea() // Built in initialization block
+{
+  setLeftWheelSpeed(standardBackwardSpeed);
+  setRightWheelSpeed(standardBackwardSpeed);
+  //Until the reading goes high
+  delay(moveBackwardTimer);
+  setLeftWheelSpeed(standardRotationSpeed);    //Turn to right 
+  setRightWheelSpeed(-standardRotationSpeed);  // Turn to right
+  delay(trunTimer);
+ }
+
 
 /*
  * Function for setting left wheel signal
