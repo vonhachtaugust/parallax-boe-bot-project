@@ -5,6 +5,9 @@ Project contribution guide
 Software version
 - Make sure to check contributions with Arduido software v. 1.6.8 compiler
 
+Code format
+- Please use the Arduino code format tool Tools > Auto Format, or [Ctrl-T] before commiting code
+
 --------------------------------------------------------------------------------
 Robot state documentation
 --------------------------------------------------------------------------------
@@ -18,7 +21,7 @@ About: At the corner of the goal zone
 Task: Go a bit forwards, then rotate until facing the goal zone
 
 State 2:
-About: Currently heading towards goal zone
+About: Currently heading into goal zone
 Task: Go fowards
 
 State 3:
