@@ -11,31 +11,38 @@ Servo servoRight; // Declare right servo
 // Robot hardware parameters
 int leftWheelPin = 13;
 int rightWheelPin = 12;
+int leftPhototransistor = A1;
+int rightPhototransistor = A0;
+int serialInputNumber = 9600;
 
 // FSM parameters
-int standbySignalWidth = 1500; // Standard standby signal width
+int currentState;
 int numIterations;
-int maxNumIterations = 50;
+int standbySignalWidth = 1500; // Standard standby signal width
+int timeStep = 100; // time step in ms
+int maxNumIterations = 100;
 int standardForwardSpeed = 500;
 int standardRotationSpeed = 200;
-int standardBackwardSpeed = -standardForwardSpeed;
-int moveBackwardTimer=200;
-int trunTimer=100;
+int standardBackwardSpeed = - standardForwardSpeed;
+int moveBackwardTimer = 200;
+int trunTimer = 100;
+
+// Sensor measuring parameters
+float photoTransistorThreshold = 0.2;
 
 /*
  * Turn over after the Robot is inside the back area
  */
-void turnAwayFromBlackArea() // Built in initialization block
-{
+void turnAwayFromBlackArea() {
   setLeftWheelSpeed(standardBackwardSpeed);
   setRightWheelSpeed(standardBackwardSpeed);
-  //Until the reading goes high
+  
+  // Until the reading goes high
   delay(moveBackwardTimer);
-  setLeftWheelSpeed(standardRotationSpeed);    //Turn to right 
-  setRightWheelSpeed(-standardRotationSpeed);  // Turn to right
+  setLeftWheelSpeed(standardRotationSpeed); // Turn to right
+  setRightWheelSpeed(-standardRotationSpeed); // Turn to right
   delay(trunTimer);
- }
-
+}
 
 /*
  * Function for setting left wheel signal
@@ -55,61 +62,109 @@ int setRightWheelSpeed(int v) {
   servoRight.writeMicroseconds(signalWidth);
 }
 
-// Function for stopping the servo motors
-void stopRobot() {
-    servoLeft.detach();                      // Stop servo signals
-    servoRight.detach();
-}
-
-// Function for meassuring voltage on analog input pin
-float volts(int adPin)                       // Measures volts at adPin
-{                                            // Returns floating point voltage
- return float(analogRead(adPin)) * 5.0 / 1024.0;
-}
-
 /*
  * Robot initialization
  */
-void setup() // Built in initialization block
-{
+void setup() { // Built in initialization block
   numIterations = 0;
-  Serial.begin(9600); //Make console listen to serial input
+  
+  currentState = 0; // initial state, search
+  setLeftWheelSpeed(standardForwardSpeed);
+  setRightWheelSpeed(standardForwardSpeed);
+  
+  Serial.begin(serialInputNumber); // Make console listen to serial input
   servoLeft.attach(leftWheelPin);
   servoRight.attach(rightWheelPin);
-  
-  setLeftWheelSpeed(-500);
-  setRightWheelSpeed(-500);
 }
- 
+
 /*
  * Robot main loop
  */
-void loop()
-{
-
-  printTransistorReadings();
+void loop() {
   
   if (numIterations >= maxNumIterations) {
     stopRobot();
   }
-    
+
+  // Check collision with photo transistors
   boolean aboutToCollide = checkPhototransistors();
   if (aboutToCollide) {
     stopRobot();
   }
-  delay(100);
+
+  // ----------
+  // FSM
+  // ----------
+  if (currentState == 0) {
+
+    // Robot should here do general sensor checks, and when appropriate
+    // decide on a behaviour.
+    
+    // Check if at edge
+    boolean atEdge = checkIfAtEdge();
+    if (atEdge) {
+      int rotDir;
+      if (sensorBelowThreshold(rightPhototransistor)) {
+        rotDir = 1; // right rotation
+      } else if (sensorBelowThreshold(leftPhototransistor)) {
+        rotDir = -1; // left rotation
+      }
+    }
+  } else if (currentState == 1) {
+    // At zone corner
+  } else if (currentState == 2) {
+    // Entering goal zone
+  } else if (currentState == 3) {
+    // Backing out of goal zone
+  }
+  
+  delay(timeStep);
   numIterations++;
+
+  printTransistorReadings(); // DEBUG
 }
 
-// Function for checking phototransistor values
- boolean checkPhototransistors(){
-  return ((volts(A0) < 0.2) && (volts(A1) < 0.2));
- }
+/* 
+ * Function for checking if sensor reading is small enough
+ */
+boolean sensorBelowThreshold(int Ax) {
+  return (getVoltsByPin(Ax) < photoTransistorThreshold);
+}
 
+/* 
+ * Function for checking phototransistor values
+ */
+boolean checkPhototransistors() {
+  return (sensorBelowThreshold(rightPhototransistor) && sensorBelowThreshold(leftPhototransistor));
+}
+
+/* 
+ * Function for checking if robot is at an edge, i.e. one sensor gives large enough reading
+ */
+boolean checkIfAtEdge() {
+  return (sensorBelowThreshold(rightPhototransistor) || sensorBelowThreshold(leftPhototransistor));
+}
+
+/*
+ * Function for returning sensor value in volts
+ */
+float getVoltsByPin(int adPin) {
+  float reading = float(analogRead(adPin));
+  reading = reading * 5.0 / 1024.0;
+  return reading;
+}
+
+// Function for stopping the servo motors
+void stopRobot() {
+    servoLeft.detach();
+    servoRight.detach();
+}
+
+/*
+ * Debugging purpose - printing phototransistor sensor values
+ */
 void printTransistorReadings(){
-  Serial.print(volts(A0)); // prints voltage reading of phototransistor
+  Serial.print(getVoltsByPin(rightPhototransistor)); // prints voltage reading of phototransistor
   Serial.println(" Volts");
   Serial.println("");
 }
-
-
