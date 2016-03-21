@@ -43,7 +43,7 @@ int setRightWheelSpeed(int v) {
 void setup() // Built in initialization block
 {
   numIterations = 0;
-  
+  Serial.begin(9600); //Make console listen to serial input
   servoLeft.attach(leftWheelPin);
   servoRight.attach(rightWheelPin);
   
@@ -57,16 +57,29 @@ void setup() // Built in initialization block
 void loop()
 {
   if (numIterations >= maxNumIterations) {
-    deEscelateRobot();
+    stopRobot();
+  }
+    
+  boolean aboutToCollide = checkPhototransistors();
+  if (aboutToCollide) {
+    stopRobot();
   }
   delay(100);
   numIterations++;
 }
 
-/*
- * Function for handling robot deescelation
- */
-void deEscelateRobot() {
-  setLeftWheelSpeed(0);
-  setRightWheelSpeed(0);
+// Function for checking phototransistor values
+ boolean checkPhototransistors(){
+  return ((volts(A0) < 0.15) && (volts(A1) < 0.15));
+ }
+
+// Function for stopping the servo motors
+void stopRobot() {
+    servoLeft.detach();                      // Stop servo signals
+    servoRight.detach();
+}
+
+float volts(int adPin)                       // Measures volts at adPin
+{                                            // Returns floating point voltage
+ return float(analogRead(adPin)) * 5.0 / 1024.0;
 }
