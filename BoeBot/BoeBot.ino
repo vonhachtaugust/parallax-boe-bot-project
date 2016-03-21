@@ -37,6 +37,18 @@ int setRightWheelSpeed(int v) {
   servoRight.writeMicroseconds(signalWidth);
 }
 
+// Function for stopping the servo motors
+void stopRobot() {
+    servoLeft.detach();                      // Stop servo signals
+    servoRight.detach();
+}
+
+// Function for meassuring voltage on analog input pin
+float volts(int adPin)                       // Measures volts at adPin
+{                                            // Returns floating point voltage
+ return float(analogRead(adPin)) * 5.0 / 1024.0;
+}
+
 /*
  * Robot initialization
  */
@@ -47,8 +59,8 @@ void setup() // Built in initialization block
   servoLeft.attach(leftWheelPin);
   servoRight.attach(rightWheelPin);
   
-  setLeftWheelSpeed(500);
-  setRightWheelSpeed(500);
+  setLeftWheelSpeed(-500);
+  setRightWheelSpeed(-500);
 }
  
 /*
@@ -56,6 +68,9 @@ void setup() // Built in initialization block
  */
 void loop()
 {
+
+  printTransistorReadings();
+  
   if (numIterations >= maxNumIterations) {
     stopRobot();
   }
@@ -70,16 +85,13 @@ void loop()
 
 // Function for checking phototransistor values
  boolean checkPhototransistors(){
-  return ((volts(A0) < 0.15) && (volts(A1) < 0.15));
+  return ((volts(A0) < 0.2) && (volts(A1) < 0.2));
  }
 
-// Function for stopping the servo motors
-void stopRobot() {
-    servoLeft.detach();                      // Stop servo signals
-    servoRight.detach();
+void printTransistorReadings(){
+  Serial.print(volts(A0)); // prints voltage reading of phototransistor
+  Serial.println(" Volts");
+  Serial.println("");
 }
 
-float volts(int adPin)                       // Measures volts at adPin
-{                                            // Returns floating point voltage
- return float(analogRead(adPin)) * 5.0 / 1024.0;
-}
+
