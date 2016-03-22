@@ -23,12 +23,12 @@ int numIterations;
 int currentTime;
 
 // FSM parameters
-int standbySignalWidth = 1500; // Standard standby signal width
+int standbySignalWidth = 1200; // Standard standby signal width
 int timeStep = 100; // time step in ms
-int maxNumIterations = 3;
-int standardForwardSpeed = -1500; //Forward speed
+int maxNumIterations = 10;
+int standardForwardSpeed = -1200; //Forward speed
 int standardRotationSpeed = 200; //Rotation speed
-int standardBackwardSpeed =  1500;//Backward speed
+int standardBackwardSpeed =  1200;//Backward speed
 int moveBackwardTimer = 500; //Move backward timer
 int trunTimer = 1200; // Turn timer about 180 degree
 int rotDir;// 1:Rigth  -1:Left
@@ -59,7 +59,7 @@ void setup() { // Built in initialization block
   numIterations = 0;
   currentTime = 0;
 
-  currentState = 0; // initial state, search
+  currentState = 1; // initial state, search
   nextState = 0;
   nextStateTime = -1;
 
@@ -121,8 +121,10 @@ void loop() {
     }
   } else if (currentState == 2) {
     // Entering goal zone, timer for state 3 should be set here
+    currentState = 3;
   } else if (currentState == 3) {
     // Backing out of goal zone
+    currentState = 4;
   } else if (currentState == 4) { //Backing out of goal zone
     turnAwayFromGoalArea();
     //currentState =0;
@@ -254,8 +256,11 @@ void turnAwayFromGoalArea() {
    Debugging purpose - printing phototransistor sensor values
 */
 void printTransistorReadings() {
+  Serial.println("\n Right:");
   Serial.print(getVoltsByPin(rightPhototransistor)); // prints voltage reading of phototransistor
+  Serial.println("  \n Left:");
   Serial.print(getVoltsByPin(leftPhototransistor));
-  Serial.println(" Volts");
-  Serial.println("");
+ Serial.println("----------------------");
+ // Serial.println(" Volts");
+ // Serial.println("");
 }
