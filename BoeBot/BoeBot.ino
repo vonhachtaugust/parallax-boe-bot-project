@@ -63,12 +63,14 @@ void setup() { // Built in initialization block
   nextState = 0;
   nextStateTime = -1;
 
-  setLeftWheelSpeed(standardForwardSpeed);
-  setRightWheelSpeed(standardForwardSpeed);
 
   Serial.begin(serialInputNumber); // Make console listen to serial input
   servoLeft.attach(leftWheelPin);
   servoRight.attach(rightWheelPin);
+
+  setLeftWheelSpeed(standardForwardSpeed);
+  setRightWheelSpeed(standardForwardSpeed);
+
 }
 
 
