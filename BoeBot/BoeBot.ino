@@ -23,7 +23,7 @@ int numIterations;
 int currentTime;
 
 // FSM parameters
-int standbySignalWidth = 1200; // Standard standby signal width
+int standbySignalWidth = 1500; // Standard standby signal width
 int timeStep = 100; // time step in ms
 int maxNumIterations = 10;
 int standardForwardSpeed = -1200; //Forward speed
@@ -241,11 +241,6 @@ void turnAwayFromGoalArea() {
   setRightWheelSpeed(-standardRotationSpeed); // Turn to right
   delay(trunTimer);
 }
-
-
-
-
-
 
 
 
