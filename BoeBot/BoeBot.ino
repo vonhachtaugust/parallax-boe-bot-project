@@ -5,15 +5,17 @@
 
 #include <Servo.h> // Include servo library
 
-Servo servoLeft; // Declare left servo
 Servo servoRight; // Declare right servo
+Servo servoLeft; // Declare left servo
+Servo servoClaw; //Declares claw servo
 
 // Robot hardware parameters
-int leftWheelPin = 13;
 int rightWheelPin = 12;
-int leftPhototransistor = A1;
+int leftWheelPin = 13;
+int clawPin; // TO BE SET
 int rightPhototransistor = A0;
-int serialInputNumber = 9600;
+int leftPhototransistor = A1;
+int serialInputNumber = 9600; //bps channel for serial input
 
 // FSM variables
 int currentState;
@@ -26,14 +28,16 @@ int currentTime;
 int standbySignalWidth = 1500; // Standard standby signal width
 int timeStep = 100; // time step in ms
 int maxNumIterations = 10;
-int standardForwardSpeed = -1200; //Forward speed
+int standardForwardSpeed = -1300; //Forward speed
 int standardRotationSpeed = 200; //Rotation speed
-int standardBackwardSpeed =  1200;//Backward speed
+int standardBackwardSpeed =  1300;//Backward speed
+int clawOpenPWMwidth = 1; // To be set depending on parameters for claw-servo.
+int clawGripPWMwidth = 1; // To be set depending on parameters for claw-servo.
 int moveBackwardTimer = 500; //Move backward timer
-int trunTimer = 1200; // Turn timer about 180 degree
+int turnTimer = 1200; // Turn timer about 180 degree
 int rotDir;// 1:Rigth  -1:Left
 boolean aboutToCollide; // To check if BoeBot is in the goal area
-
+boolean clawGrippedObject = false; // To check if claw has gripped an object, initially assumed to be false.
 
 float photoTransistorThreshold = 0.1; // Sensor measuring parameters
 
@@ -48,10 +52,11 @@ void turnAwayFromBlackArea() {
   delay(moveBackwardTimer);
   setLeftWheelSpeed(standardRotationSpeed); // Turn to right
   setRightWheelSpeed(-standardRotationSpeed); // Turn to right
-  delay(trunTimer);
+  delay(turnTimer);
 }
 
 //////////////////////////////ROBOT INITIALIZATION///////////////////////////////////
+
 /*
    Robot initialization
 */
@@ -63,18 +68,18 @@ void setup() { // Built in initialization block
   nextState = 0;
   nextStateTime = -1;
 
-
   Serial.begin(serialInputNumber); // Make console listen to serial input
   servoLeft.attach(leftWheelPin);
   servoRight.attach(rightWheelPin);
-
   setLeftWheelSpeed(standardForwardSpeed);
   setRightWheelSpeed(standardForwardSpeed);
 
+  //servoClaw.attach(clawPin); //Un-comment once claw servo has been dedicated to a pin and clawPin thereby has been set.
+  //servoClaw.setMicroseconds(clawOpenPWMwidth); //Un-comment once servoClaw has been properly attached.
 }
 
 
-/////////////////////////////////MAIN LOOP/////////////////////////////
+//////////////////////////////////////////// MAIN LOOP ////////////////////////////////////////////
 /*
    Robot main loop
 */
@@ -96,13 +101,15 @@ void loop() {
     nextStateTime = -1; // reset timer
   }
 
-  // -------------- //
-  // FSM
-  // -------------- //
+  //////////////////////////////////////////////// FSM ///////////////////////////////////////////
+
   if (currentState == 0) {
 
     // Robot should here do general sensor checks, and when appropriate
-    // decide on a behaviour.
+    // decide on a behaviour. Otherwise move forward
+
+    setLeftWheelSpeed(standardForwardSpeed);
+    setRightWheelSpeed(standardForwardSpeed);
 
     // Check if at edge
     boolean atEdge = checkIfAtEdge();
@@ -130,6 +137,16 @@ void loop() {
   } else if (currentState == 4) { //Backing out of goal zone
     turnAwayFromGoalArea();
     //currentState =0;
+  } else if (currentState == 5) { //Claw control state, here robot should either grip an object (If it's not currently gripping one) or release an object (If it's currently gripping one)
+    if (!clawGrippedObject) {
+      clawServo.writeMicroseconds(clawGripPWMwidth);
+      clawGrippedObject = true;
+      currentState = x; //After gripping, set current state to the state that finds the goal. ~( REMEMBER TO CHANGE x )~
+      } else{
+      clawServo.writeMicroseconds(clawOpenPWMwidth);
+      clawGrippedObject = false;
+      currentState = y; //After releasing, back away from the object to not drag it away from the goal. ~( REMEMBER TO CHANGE y )~
+    }
   }
 
   delay(timeStep);
@@ -177,7 +194,7 @@ int setRightWheelSpeed(int v) {
 }
 
 
-////////////////////////////////////////////////FUNCTIONS/////////////////////////////////////////
+//////////////////////////////////////////////// FUNCTIONS /////////////////////////////////////////
 
 
 
@@ -222,8 +239,6 @@ void stopRobot() {
 }
 
 
-
-
 /*
    Turn over after the Robot is inside the back area
 */
@@ -241,7 +256,7 @@ void turnAwayFromGoalArea() {
   delay(moveBackwardTimer);
   setLeftWheelSpeed(standardRotationSpeed); // Turn to right
   setRightWheelSpeed(-standardRotationSpeed); // Turn to right
-  delay(trunTimer);
+  delay(turnTimer);
 }
 
 
