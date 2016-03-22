@@ -25,15 +25,17 @@ int currentTime;
 // FSM parameters
 int standbySignalWidth = 1500; // Standard standby signal width
 int timeStep = 100; // time step in ms
-int maxNumIterations = 100;
-int standardForwardSpeed = 500;
-int standardRotationSpeed = 200;
-int standardBackwardSpeed = - standardForwardSpeed;
-int moveBackwardTimer = 200;
-int trunTimer = 100;
+int maxNumIterations = 3;
+int standardForwardSpeed = -1500; //Forward speed
+int standardRotationSpeed = 200; //Rotation speed
+int standardBackwardSpeed =  1500;//Backward speed
+int moveBackwardTimer = 500; //Move backward timer
+int trunTimer = 1200; // Turn timer about 180 degree
+int rotDir;// 1:Rigth  -1:Left
+boolean aboutToCollide; // To check if BoeBot is in the goal area
 
-// Sensor measuring parameters
-float photoTransistorThreshold = 0.2;
+
+float photoTransistorThreshold = 0.1; // Sensor measuring parameters
 
 /*
    Turn over after the Robot is inside the back area
@@ -49,24 +51,7 @@ void turnAwayFromBlackArea() {
   delay(trunTimer);
 }
 
-/*
-   Function for setting left wheel signal
-   Input: v - addition in micro seconds to add to standby signal width
-*/
-int setLeftWheelSpeed(int v) {
-  int signalWidth = standbySignalWidth + v;
-  servoLeft.writeMicroseconds(signalWidth);
-}
-
-/*
-   Function for setting right wheel signal
-   Input: v - addition in micro seconds to add to standby signal width
-*/
-int setRightWheelSpeed(int v) {
-  int signalWidth = standbySignalWidth - v;
-  servoRight.writeMicroseconds(signalWidth);
-}
-
+//////////////////////////////ROBOT INITIALIZATION///////////////////////////////////
 /*
    Robot initialization
 */
@@ -77,6 +62,7 @@ void setup() { // Built in initialization block
   currentState = 0; // initial state, search
   nextState = 0;
   nextStateTime = -1;
+
   setLeftWheelSpeed(standardForwardSpeed);
   setRightWheelSpeed(standardForwardSpeed);
 
@@ -85,6 +71,8 @@ void setup() { // Built in initialization block
   servoRight.attach(rightWheelPin);
 }
 
+
+/////////////////////////////////MAIN LOOP/////////////////////////////
 /*
    Robot main loop
 */
@@ -135,6 +123,9 @@ void loop() {
     // Entering goal zone, timer for state 3 should be set here
   } else if (currentState == 3) {
     // Backing out of goal zone
+  } else if (currentState == 4) { //Backing out of goal zone
+    turnAwayFromGoalArea();
+    //currentState =0;
   }
 
   delay(timeStep);
@@ -164,6 +155,29 @@ void initiateTurnTowardsGoalZoneState() {
 }
 
 /*
+   Function for setting left wheel signal
+   Input: v - addition in micro seconds to add to standby signal width
+*/
+int setLeftWheelSpeed(int v) {
+  int signalWidth = standbySignalWidth + v;
+  servoLeft.writeMicroseconds(signalWidth);
+}
+
+/*
+   Function for setting right wheel signal
+   Input: v - addition in micro seconds to add to standby signal width
+*/
+int setRightWheelSpeed(int v) {
+  int signalWidth = standbySignalWidth - v;
+  servoRight.writeMicroseconds(signalWidth);
+}
+
+
+////////////////////////////////////////////////FUNCTIONS/////////////////////////////////////////
+
+
+
+/*
    Function for checking if sensor reading is small enough
 */
 boolean sensorBelowThreshold(int Ax) {
@@ -184,6 +198,7 @@ boolean checkIfAtEdge() {
   return (sensorBelowThreshold(rightPhototransistor) || sensorBelowThreshold(leftPhototransistor));
 }
 
+
 /*
    Function for returning sensor value in volts
 */
@@ -193,17 +208,54 @@ float getVoltsByPin(int adPin) {
   return reading;
 }
 
-// Function for stopping the servo motors
+
+/*
+  Function for stopping the servo motors
+*/
 void stopRobot() {
   servoLeft.detach();
   servoRight.detach();
 }
 
+
+
+
+/*
+   Turn over after the Robot is inside the back area
+*/
+void turnAwayFromGoalArea() {
+
+  setLeftWheelSpeed(standardBackwardSpeed);
+  setRightWheelSpeed(standardBackwardSpeed);
+
+  //while(aboutToCollide){
+  //delay(1000);
+  //aboutToCollide = checkPhototransistors();
+  //}
+
+  // Until the reading goes high
+  delay(moveBackwardTimer);
+  setLeftWheelSpeed(standardRotationSpeed); // Turn to right
+  setRightWheelSpeed(-standardRotationSpeed); // Turn to right
+  delay(trunTimer);
+}
+
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////DEBUGGERS//////////////////////////////
 /*
    Debugging purpose - printing phototransistor sensor values
 */
 void printTransistorReadings() {
   Serial.print(getVoltsByPin(rightPhototransistor)); // prints voltage reading of phototransistor
+  Serial.print(getVoltsByPin(leftPhototransistor));
   Serial.println(" Volts");
   Serial.println("");
 }
