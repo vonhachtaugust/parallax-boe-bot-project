@@ -23,23 +23,28 @@ int nextState;
 int nextStateTime;
 int numIterations;
 int currentTime;
+boolean aboutToCollide; // To check if BoeBot is in the goal area
+boolean clawGrippedObject = false; // To check if claw has gripped an object, initially assumed to be false.
+int rotDir;// 1:Rigth  -1:Left
 
 // FSM parameters
 int standbySignalWidth = 1500; // Standard standby signal width
-int timeStep = 100; // time step in ms
-int maxNumIterations = 10;
-int standardForwardSpeed = -1300; //Forward speed
-int standardRotationSpeed = 200; //Rotation speed
-int standardBackwardSpeed =  1300;//Backward speed
 int clawOpenPWMwidth = 1; // To be set depending on parameters for claw-servo.
 int clawGripPWMwidth = 1; // To be set depending on parameters for claw-servo.
-int moveBackwardTimer = 500; //Move backward timer
+int standardForwardSpeed = -1200; //Forward speed
+int standardRotationSpeed = 200; //Rotation speed
+int standardBackwardSpeed =  1200;//Backward speed
+int moveBackwardTimer = 1000; //Move backward timer
 int turnTimer = 1200; // Turn timer about 180 degree
-int rotDir;// 1:Rigth  -1:Left
-boolean aboutToCollide; // To check if BoeBot is in the goal area
-boolean clawGrippedObject = false; // To check if claw has gripped an object, initially assumed to be false.
+float photoTransistorThreshold = 0.25; // Sensor measuring parameters
+float sensorErrorMarginCorner = 0.05;
 
-float photoTransistorThreshold = 0.1; // Sensor measuring parameters
+// Simulation parameters
+int timeStep = 100; // time step in ms
+int maxRunTime = 25; // max run time in seconds
+
+// Simulation variables
+int maxNumIterations;
 
 /*
    Turn over after the Robot is inside the back area
@@ -64,18 +69,22 @@ void setup() { // Built in initialization block
   numIterations = 0;
   currentTime = 0;
 
-  currentState = 1; // initial state, search
+  maxNumIterations = float(maxRunTime) / (timeStep*0.001);
+
+  currentState = 0; // initial state, search
   nextState = 0;
   nextStateTime = -1;
+
+  setLeftWheelSpeed(standardForwardSpeed);
+  setRightWheelSpeed(standardForwardSpeed);
 
   Serial.begin(serialInputNumber); // Make console listen to serial input
   servoLeft.attach(leftWheelPin);
   servoRight.attach(rightWheelPin);
-  setLeftWheelSpeed(standardForwardSpeed);
-  setRightWheelSpeed(standardForwardSpeed);
 
   //servoClaw.attach(clawPin); //Un-comment once claw servo has been dedicated to a pin and clawPin thereby has been set.
   //servoClaw.setMicroseconds(clawOpenPWMwidth); //Un-comment once servoClaw has been properly attached.
+
 }
 
 
@@ -84,7 +93,10 @@ void setup() { // Built in initialization block
    Robot main loop
 */
 void loop() {
-
+  Serial.println(currentState);
+  Serial.println(maxNumIterations);
+  Serial.println(maxRunTime);
+  Serial.println(timeStep);
   currentTime = (float(timeStep) * 0.001) * numIterations;
 
   if (numIterations > maxNumIterations) {
@@ -116,6 +128,8 @@ void loop() {
     if (atEdge) {
       initiateTurnTowardsGoalZoneState();
       currentState = 1;
+    } else if (checkPhototransistors()) {
+      currentState = 2;
     }
 
   } else if (currentState == 1) {
@@ -124,9 +138,6 @@ void loop() {
       setLeftWheelSpeed(standardForwardSpeed);
       setRightWheelSpeed(standardForwardSpeed);
       currentState = 2;
-
-      nextState = 4;
-      nextStateTime = currentTime + 1500;
     }
   } else if (currentState == 2) {
     // Entering goal zone, timer for state 3 should be set here
@@ -139,13 +150,13 @@ void loop() {
     //currentState =0;
   } else if (currentState == 5) { //Claw control state, here robot should either grip an object (If it's not currently gripping one) or release an object (If it's currently gripping one)
     if (!clawGrippedObject) {
-      clawServo.writeMicroseconds(clawGripPWMwidth);
+      //clawServo.writeMicroseconds(clawGripPWMwidth);
       clawGrippedObject = true;
-      currentState = x; //After gripping, set current state to the state that finds the goal. ~( REMEMBER TO CHANGE x )~
+      //currentState = x; //After gripping, set current state to the state that finds the goal. ~( REMEMBER TO CHANGE x )~
       } else{
-      clawServo.writeMicroseconds(clawOpenPWMwidth);
+      //clawServo.writeMicroseconds(clawOpenPWMwidth);
       clawGrippedObject = false;
-      currentState = y; //After releasing, back away from the object to not drag it away from the goal. ~( REMEMBER TO CHANGE y )~
+      //currentState = y; //After releasing, back away from the object to not drag it away from the goal. ~( REMEMBER TO CHANGE y )~
     }
   }
 
@@ -202,7 +213,10 @@ int setRightWheelSpeed(int v) {
    Function for checking if sensor reading is small enough
 */
 boolean sensorBelowThreshold(int Ax) {
-  return (getVoltsByPin(Ax) < photoTransistorThreshold);
+  return (getVoltsByPin(Ax) < photoTransistorThreshold - sensorErrorMarginCorner);
+}
+boolean sensorAboveThreshold(int Ax) {
+  return (getVoltsByPin(Ax) > photoTransistorThreshold + sensorErrorMarginCorner);
 }
 
 /*
@@ -216,7 +230,11 @@ boolean checkPhototransistors() {
    Function for checking if robot is at an edge, i.e. one sensor gives large enough reading
 */
 boolean checkIfAtEdge() {
-  return (sensorBelowThreshold(rightPhototransistor) || sensorBelowThreshold(leftPhototransistor));
+  boolean leftSensorLow = sensorBelowThreshold(leftPhototransistor);
+  boolean rightSensorLow = sensorBelowThreshold(rightPhototransistor);
+  boolean leftSensorHigh = sensorAboveThreshold(leftPhototransistor);
+  boolean rightSensorHigh = sensorAboveThreshold(rightPhototransistor);
+  return (leftSensorLow && rightSensorHigh) || (leftSensorHigh && rightSensorLow);
 }
 
 
