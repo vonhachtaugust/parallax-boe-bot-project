@@ -116,7 +116,7 @@ void loop() {
       setRightWheelSpeed(standardForwardSpeed);
       currentState = 2;
 
-      nextState = 3;
+      nextState = 4;
       nextStateTime = currentTime + 1500;
     }
   } else if (currentState == 2) {
