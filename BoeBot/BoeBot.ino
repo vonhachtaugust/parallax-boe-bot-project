@@ -29,8 +29,8 @@ int rotDir;// 1:Rigth  -1:Left
 
 // FSM parameters
 int standbySignalWidth = 1500; // Standard standby signal width
-int clawOpenPWMwidth = 1; // To be set depending on parameters for claw-servo.
-int clawGripPWMwidth = 1; // To be set depending on parameters for claw-servo.
+int clawOpenPWMwidth; // To be set depending on parameters for claw-servo.
+int clawGripPWMwidth; // To be set depending on parameters for claw-servo.
 int standardForwardSpeed = -1200; //Forward speed
 int standardRotationSpeed = 200; //Rotation speed
 int standardBackwardSpeed =  1200;//Backward speed
@@ -46,21 +46,14 @@ int maxRunTime = 25; // max run time in seconds
 // Simulation variables
 int maxNumIterations;
 
-/*
-   Turn over after the Robot is inside the back area
-*/
-void turnAwayFromBlackArea() {
-  setLeftWheelSpeed(standardBackwardSpeed);
-  setRightWheelSpeed(standardBackwardSpeed);
 
-  // Until the reading goes high
-  delay(moveBackwardTimer);
-  setLeftWheelSpeed(standardRotationSpeed); // Turn to right
-  setRightWheelSpeed(-standardRotationSpeed); // Turn to right
-  delay(turnTimer);
-}
 
-//////////////////////////////ROBOT INITIALIZATION///////////////////////////////////
+
+
+
+////////////////////////////////// INITIALIZATION ///////////////////////////////////
+
+
 
 /*
    Robot initialization
@@ -88,33 +81,33 @@ void setup() { // Built in initialization block
 }
 
 
+
+
 //////////////////////////////////////////// MAIN LOOP ////////////////////////////////////////////
 /*
    Robot main loop
 */
 void loop() {
-  Serial.println(currentState);
-  Serial.println(maxNumIterations);
-  Serial.println(maxRunTime);
-  Serial.println(timeStep);
   currentTime = (float(timeStep) * 0.001) * numIterations;
 
   if (numIterations > maxNumIterations) {
     stopRobot();
   }
-
   /*
-     Should do obstacle avoidance here
+     Should do obstacle detection here
   */
-
   // state change timer
   if ((nextStateTime >= currentTime) && (nextStateTime <= currentTime + timeStep)) {
     currentState = nextState;
     nextStateTime = -1; // reset timer
   }
 
-  //////////////////////////////////////////////// FSM ///////////////////////////////////////////
 
+
+  //////////////////////////////////////////////// FSM ///////////////////////////////////////////
+  /*
+   Brain of Robot Carlo
+  */
   if (currentState == 0) {
 
     // Robot should here do general sensor checks, and when appropriate
@@ -166,6 +159,12 @@ void loop() {
   printTransistorReadings(); // DEBUG
 }
 
+
+
+
+
+
+//////////////////////////////////////////////// FUNCTIONS /////////////////////////////////////////
 /*
    Function for initiating state 1
 */
@@ -203,11 +202,6 @@ int setRightWheelSpeed(int v) {
   int signalWidth = standbySignalWidth - v;
   servoRight.writeMicroseconds(signalWidth);
 }
-
-
-//////////////////////////////////////////////// FUNCTIONS /////////////////////////////////////////
-
-
 
 /*
    Function for checking if sensor reading is small enough
@@ -261,7 +255,6 @@ void stopRobot() {
    Turn over after the Robot is inside the back area
 */
 void turnAwayFromGoalArea() {
-
   setLeftWheelSpeed(standardBackwardSpeed);
   setRightWheelSpeed(standardBackwardSpeed);
 
