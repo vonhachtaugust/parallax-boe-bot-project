@@ -1,7 +1,4 @@
-/*
-  Robotics with the BOE Shield – LeftServoClockwise
-  Generate a servo full speed clockwise signal on digital pin 13.
-*/
+
 
 ///////////////////////////////////Hardware Map//////////////////////////////
 /*         Digital port: D1..D13
@@ -33,6 +30,54 @@
 
 
 
+///////////////////////////////////Function Map//////////////////////////////
+/*         Short description of the funtions. Plus their input and output
+           
+   /////////////////////////////////////////////////////////////////////////
+
+
+
+  
+void initiateTurnTowardsGoalZoneState() :Function for initiating state 1
+   
+int setLeftWheelSpeed(int v): Function for setting left wheel signal   Input: v - addition in micro seconds to add to standby signal width
+ 
+int setRightWheelSpeed(int v) : Function for setting right wheel signal  Input: v - addition in micro seconds to add to standby signal width
+
+boolean sensorBelowThreshold(int Ax) :Function for checking if sensor reading is small enough
+
+boolean sensorAboveThreshold(int Ax) :Function for checking if sensor reading is small enough
+
+boolean checkPhototransistors() :Function for checking phototransistor values
+
+boolean checkIfAtEdge() : Function for checking if robot is at an edge, i.e. one sensor gives large enough reading
+
+float getVoltsByPin(int adPin) : Function for returning sensor value in volts
+
+void stopRobot() : Function for stopping the servo motors
+
+void stopTempRobot() :  Function for Temprary stop the servo motors
+
+void moveForwardRobot() : Function for Move forward the servo motors
+
+void turnAwayFromGoalArea() :   Turn over after the Robot is inside the goal area
+
+void sonarServoTurn(Servo myservo, int sonarServoMinAngle, int sonarServoMaxAngle): Sonar servo turn
+   
+void turnAwayFromGoalArea() :Turn over after the Robot is inside the back area
+    
+int SonarReadingDistance() :Sonar reading function and its calculation 
+
+long  rcTime(int pin) :  Measures and displays microsecond decay time for light sensor.
+
+float differenceLeftRigthPhotoSensor(int leftPhotoSensorPin, int rightPhotoSensorPin) :  Function to calculate the normalzed of right and left photosensors ----> return Vlaue:[-0.5 0.5]=[left right]
+
+*/
+
+
+
+
+
 
 #include <Servo.h> // Include servo library
 
@@ -55,11 +100,6 @@ const int rightWheelPin = 13; //Right wheel Servp
 
 
 const int serialInputNumber = 9600; //bps channel for serial input
-
-
-
-
-
 
 
 // FSM variables
@@ -102,8 +142,6 @@ int maxNumIterations;
 
 ////////////////////////////////// INITIALIZATION ///////////////////////////////////
 
-
-
 /*
    Robot initialization
 */
@@ -131,8 +169,6 @@ void setup() { // Built in initialization block
 }
 
 
-
-
 //////////////////////////////////////////// MAIN LOOP ////////////////////////////////////////////
 /*
    Robot main loop
@@ -151,6 +187,7 @@ void loop() {
     currentState = nextState;
     nextStateTime = -1; // reset timer
   }
+
 
 
 
@@ -383,6 +420,7 @@ void initiateTurnTowardsGoalZoneState() {
   setRightWheelSpeed(rightWheelRotSpeed);
 }
 
+
 /*
    Function for setting left wheel signal
    Input: v - addition in micro seconds to add to standby signal width
@@ -392,6 +430,7 @@ int setLeftWheelSpeed(int v) {
   servoLeft.writeMicroseconds(signalWidth);
 }
 
+
 /*
    Function for setting right wheel signal
    Input: v - addition in micro seconds to add to standby signal width
@@ -400,6 +439,7 @@ int setRightWheelSpeed(int v) {
   int signalWidth = standbySignalWidth - v;
   servoRight.writeMicroseconds(signalWidth);
 }
+
 
 /*
    Function for checking if sensor reading is small enough
@@ -411,12 +451,14 @@ boolean sensorAboveThreshold(int Ax) {
   return (getVoltsByPin(Ax) > photoTransistorThreshold + sensorErrorMarginCorner);
 }
 
+
 /*
    Function for checking phototransistor values
 */
 boolean checkPhototransistors() {
   return (sensorBelowThreshold(rightPhototransistor) && sensorBelowThreshold(leftPhototransistor));
 }
+
 
 /*
    Function for checking if robot is at an edge, i.e. one sensor gives large enough reading
@@ -458,7 +500,6 @@ void stopTempRobot() {
 }
 
 
-
 /*
   Function for Move forward the servo motors
 */
@@ -467,8 +508,9 @@ void moveForwardRobot() {
   setRightWheelSpeed(standardForwardSpeed);
 }
 
+
 /*
-   Turn over after the Robot is inside the back area
+   Turn over after the Robot is inside the goal area
 */
 void turnAwayFromGoalArea() {
   setLeftWheelSpeed(standardBackwardSpeed);
@@ -487,6 +529,9 @@ void turnAwayFromGoalArea() {
 }
 
 
+/*
+ * Sonar servo turn
+ */
 void sonarServoTurn(Servo myservo, int sonarServoMinAngle, int sonarServoMaxAngle) {
   int pos;
   for (pos = sonarServoMinAngle; pos <= sonarServoMaxAngle; pos += 1) { // goes from min degrees to max degrees
@@ -499,6 +544,7 @@ void sonarServoTurn(Servo myservo, int sonarServoMinAngle, int sonarServoMaxAngl
    // delay(15);                       // waits 15ms for the servo to reach the position
  // }
 }
+
 
 /*
    Sonar reading function and its calculation
@@ -521,8 +567,8 @@ int SonarReadingDistance() {
 
 }
 
-/*
 
+/*
    Measures and displays microsecond decay time for light sensor.
 */
 long  rcTime(int pin)                         // ..returns decay time
@@ -538,6 +584,7 @@ long  rcTime(int pin)                         // ..returns decay time
   return time;                               // Return decay time
 }
 
+
 /*
    Function to calculate the normalzed of right and left photosensors ----> return Vlaue:[-0.5 0.5]=[left right]
 */
@@ -548,8 +595,6 @@ float differenceLeftRigthPhotoSensor(int leftPhotoSensorPin, int rightPhotoSenso
   ndShade = tRight / (tLeft + tRight) - 0.5; // Calculate it and subtract 0.5
   return ndShade;
 }
-
-
 
 
 
