@@ -71,12 +71,12 @@
   void ReadingSonarAllAngles() :Reading Sonar in all angles of sequenceOfScan array
 
   turnSonarServoToCertainDegree(int degree,int timer):   Position the horn of Sonar servo for a cetain degree
-  
+
   int cmDistance():Get cm distance measurment from Ping Ultrasonic Distance Sensor and returns: distance measurement in cm.
-/*
-  */
-   
-   
+  /*
+*/
+
+
 
 //************************************************************************************************************************************************************
 //************************************************************************************************************************************************************
@@ -98,6 +98,8 @@ const int pingEchoPin = 5; //Sonar Echo Pin
 const int sonarServoPin = 11; // Sonar Servo
 const int leftWheelPin = 12; // Left whell servo
 const int rightWheelPin = 13; //Right wheel Servp
+const double sonarSensorOffsetX = 0.0; // Sonar sensor horizontal offset in cm:s
+const double sonarSensorOffsetY = 8.0; // Sonar sensor vertical offset in cm:s
 
 //const int clawPin; // TO BE SET
 
@@ -139,10 +141,12 @@ int sequenceOfScan[] = {0 , 2 , 4 , 6 , 8 , 10 , 9 , 7 , 5 , 3 , 1 }; // Sequenc
 const int elementScanSequence = sizeof(sequenceOfScan) / sizeof(int); //Number of sequences
 int cm[sizeof(sequenceOfScan)]; // Array to store the distances (cm) of Sonar reading
 int angleValueofsequenceOfScan[sizeof(sequenceOfScan)]; //angle degree that Sonar servo will get samples from
-int minIndexOfSequenceCollisionAvoidance=3; //Minimum angle of the sonar reading sequence "sequenceOfScan" that might cause robot run into something
-int maxIndexOfSequenceCollisionAvoidance=7;  //Maximum angle of the sonar reading sequence "sequenceOfScan" that might cause robot run into something
+int minIndexOfSequenceCollisionAvoidance = 3; //Minimum angle of the sonar reading sequence "sequenceOfScan" that might cause robot run into something
+int maxIndexOfSequenceCollisionAvoidance = 7; //Maximum angle of the sonar reading sequence "sequenceOfScan" that might cause robot run into something
 int servoSonatTheta ;  // Set up initial sonar servo turn routate angle
-const int degreesStepTurnSonarServo = 180 / (elementScanSequence-1); // degree differences in the Sonar servo sequences 
+const int sonarOpeningAngle = 180; // Opening angle for the sonar
+const int sonarForwardAngle = 90; // The angle for which the sonar is pointing forwards
+const int degreesStepTurnSonarServo = sonarOpeningAngle / (elementScanSequence - 1); // degree differences in the Sonar servo sequences
 
 
 
@@ -230,11 +234,11 @@ void loop() {
     // Robot should here do general sensor checks, and when appropriate
     // decide on a behaviour. Otherwise move forward
     maneuver(standardForwardSpeed, standardForwardSpeed); //Move forward
-   
-   
+
+
 
   } else if (currentState == 1) {
-   WallCornerAvoidance();
+    WallCornerAvoidance();
 
     //if (wall/conrner){  // to be fixed
     // currentState = 2;  //To be uncomment
@@ -604,12 +608,12 @@ int cmDistance()
 
 
 /*
- * Convert the Sonar servo sequences to degree 
- */
+   Convert the Sonar servo sequences to degree
+*/
 void ConvertServoSequenceToDegree() {
- 
+
   for (int i = 0; i < elementScanSequence; i++) {
-  angleValueofsequenceOfScan[i]=sequenceOfScan[i] * degreesStepTurnSonarServo;
+    angleValueofsequenceOfScan[i] = sequenceOfScan[i] * degreesStepTurnSonarServo;
   }
 }
 
@@ -618,7 +622,7 @@ void ConvertServoSequenceToDegree() {
 /*
    Position the horn of Sonar servo for a cetain degree
 */
-void turnSonarServoToCertainDegree(int degree,int timer)
+void turnSonarServoToCertainDegree(int degree, int timer)
 {
   sonarServo.write(degree);
   delay(timer);
@@ -650,8 +654,8 @@ void sonarServoTurn(int sonarServoMinAngle, int sonarServoMaxAngle) {
 */
 void ReadingSonarAllAngles() {
 
-  for (int i = 0; i <elementScanSequence; i++) {
-    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[i],120);  // full rotation of servo is 250 miliseconds
+  for (int i = 0; i < elementScanSequence; i++) {
+    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[i], 120); // full rotation of servo is 250 miliseconds
     cm[i] = cmDistance();                            // Measure cm from this turn angle
     Serial.println(cm[i]);
   }
@@ -662,8 +666,8 @@ void ReadingSonarAllAngles() {
    Avoid Wall and Corner function
 */
 void WallCornerAvoidance() {
-ReadingSonarAllAngles();
-  for (int i = minIndexOfSequenceCollisionAvoidance; i <= maxIndexOfSequenceCollisionAvoidance; i++) {   
+  ReadingSonarAllAngles();
+  for (int i = minIndexOfSequenceCollisionAvoidance; i <= maxIndexOfSequenceCollisionAvoidance; i++) {
     if (cm[i] < tooCloseCm) {
       maneuver(0, 0);
       int turnAngle = FindOpenRoam(i);                     // Get opening (in terms of sequence element
@@ -697,11 +701,11 @@ int FindOpenRoam(int indexTemp) {
   int kTemp = currentTurnIndex;                                      // Second copy of current sequence[i]
   int inc;                                         // Increment/decrement variable
   int dt;                                          // Time increment
-  int reconnaissanceRepeat =0;                     // Repetitions count
+  int reconnaissanceRepeat = 0;                    // Repetitions count
   int minDistance;                                 // Minimum distance measurement
   int i;
 
-  if (currentTurnIndex < (elementScanSequence/2))   // Increment or decrement depending on where Sonar servo is pointing
+  if (currentTurnIndex < (elementScanSequence / 2)) // Increment or decrement depending on where Sonar servo is pointing
   {
     inc = 1;
   }
@@ -709,18 +713,18 @@ int FindOpenRoam(int indexTemp) {
   {
     inc = -1;
   }
-  
-  
-  do{ // Rotate Sonar servo until an opening becomes visible.  If it reaches servo limit, turn back to first angle of detection and try scanning toward other servo limit. If still no opening, rotate robot 90 degrees and try again.
+
+
+  do { // Rotate Sonar servo until an opening becomes visible.  If it reaches servo limit, turn back to first angle of detection and try scanning toward other servo limit. If still no opening, rotate robot 90 degrees and try again.
     reconnaissanceRepeat++;                                        // Increment repetition count
-    
+
     if (reconnaissanceRepeat > (elementScanSequence) * 2)       // If no opening after two scans Back up, turn, and stop to try again
     {
-      maneuver(-200, -200, 100);                     
+      maneuver(-200, -200, 100);
       maneuver(-200, 200, 90 * 6);
       maneuver(0, 0, 1);
     }
-    
+
     currentTurnIndex += inc;                                        // Increment/decrement k
     if (currentTurnIndex == -1)                                     // Change inc/dec value if limit reached
     {
@@ -734,11 +738,11 @@ int FindOpenRoam(int indexTemp) {
       inc = -inc;
       dt = 250;
     }
-   
+
     i = findIn(currentTurnIndex);  // Look for index of next turn position
 
     servoSonatTheta = angleValueofsequenceOfScan[i]; // Set robot turn to next position
-    turnSonarServoToCertainDegree(servoSonatTheta,dt);  //Position to turn
+    turnSonarServoToCertainDegree(servoSonatTheta, dt); //Position to turn
     dt = 100;                                        // Reset for small increment turn movement
     cm[i] = cmDistance();                            // Take Ping measurement for the new robot heading
 
@@ -768,11 +772,11 @@ int FindOpenRoam(int indexTemp) {
   int aMax = -2;                                     // Initialize maximum distance measurements to impossibly small values
   int cmMax = -2;
 
-  do{                                               // Loop for scan
+  do {                                              // Loop for scan
     currentTurnIndex += inc;                                       // Inc/dec Sonar servo position
     i = findIn(currentTurnIndex);                                  // Look up index for Sonar servo position
     servoSonatTheta = angleValueofsequenceOfScan[i];         // Position Sonar servo
-    turnSonarServoToCertainDegree(servoSonatTheta,100);  //Position to turn
+    turnSonarServoToCertainDegree(servoSonatTheta, 100); //Position to turn
 
     cm[i] = cmDistance();                            // Measure distance
 
@@ -781,16 +785,16 @@ int FindOpenRoam(int indexTemp) {
       cmMax = cm[i];
       aMax = sequenceOfScan[i];
     }
-  }while ((cm[i] > tooCloseCm) && (sequenceOfScan[i] != 0) && (sequenceOfScan[i] != (elementScanSequence-1)));
+  } while ((cm[i] > tooCloseCm) && (sequenceOfScan[i] != 0) && (sequenceOfScan[i] != (elementScanSequence - 1)));
 
   finalTurnAngle = sequenceOfScan[i];                                  // Record final Sonar servo position
   int middleAngle = initialTurnAngle + ((finalTurnAngle - initialTurnAngle) / 2);                      // Calculate middle of opening
 
-  i = findIn((elementScanSequence-1)/2);
+  i = findIn((elementScanSequence - 1) / 2);
   servoSonatTheta = angleValueofsequenceOfScan[i];
-  turnSonarServoToCertainDegree(servoSonatTheta,250/2);  //Bring the Sonar servo to middle
+  turnSonarServoToCertainDegree(servoSonatTheta, 250 / 2); //Bring the Sonar servo to middle
 
-  if (minDistance < bumpedCm+1)                                      // Turn further if too close
+  if (minDistance < bumpedCm + 1)                                    // Turn further if too close
   {
     if (middleAngle < aMax) return aMax; else return middleAngle;
   }
@@ -805,11 +809,11 @@ int FindOpenRoam(int indexTemp) {
 /*
    Finds the first instance of a value in an array.
    Parameters: value to search for
-   Returns:    index where the matching element was found
+   Returns:    index where the matching element was found or -1
 */
 int findIn(int value)
 {
-int elements=elementScanSequence;
+  int elements = elementScanSequence;
   for (int i = 0; i < elements; i++)
   {
     if (value == sequenceOfScan[i]) return i;
@@ -817,8 +821,16 @@ int elements=elementScanSequence;
   return -1;
 }
 
-
-
+/*
+  Function for calculating the desired turning angle for the robot to rotate to, assuming sensor is only offset in Y
+  Parameters: 1. The sensor reading, i.e. distance from sensor
+              2. The sensor reading angle
+              3. The sensor vertical offset
+  Returns:    Distance from middle of robot wheel axis
+*/
+double getObjectRobotRelAngle(double sensorReading, double sensorAngle, double sensorOffsetY) {
+  return atan( ( sensorReading*sin(sensorAngle) + sensorOffsetY ) / (sensorReading*cos(sensorAngle)) );
+}
 
 
 ///////////////////////////////////////////////DEBUGGERS//////////////////////////////
