@@ -713,25 +713,31 @@ void WallCornerAvoidance() {
   int iter = 0;
   do {
     iter++;
-    for (int k = 1; k < elementScanSequence - 1; k++) {
+    for (int k = 0; k < elementScanSequence ; k++) {
       turnSonarServoToCertainDegree(angleValueofsequenceOfScan[k], 100); // full rotation of servo is 250 miliseconds
       cm1[k] = cmDistance(1);                            // Measure cm from this turn angle
       GetCloseToObstacleV2();                           //Debuging!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       if ( (sequenceOfScan[k] >= minIndexOfSequenceCollisionAvoidance) && (sequenceOfScan[k] <= maxIndexOfSequenceCollisionAvoidance) && (cm1[k] < tooCloseCmSonarReading)) {
         maneuver(0, 0);
         int turnAngle = FindOpenRoam(k); // Get opening (in terms of sequence element
+        Serial.print("Find Angle:");//Debug
+        Serial.println(turnAngle);//Debug
+        //delay(20000);
         int turnAngleTime = turnAngle * msPerTurnDegree;
         if (turnAngle > 90)                         // If negative turning angle,
         {
           maneuver(-200, 200, turnAngleTime);         // then rotate CCW for turningAngleTime ms  //Maybe need modification!
+          maneuver(0, 0);
         }
         else                                           // If positive turning angle,
         {
           maneuver(200, -200, turnAngleTime);          // then rotate CW for turningAngleTime ms   //Maybe need modification!
+          maneuver(0, 0);
         }
       }
     }
-  } while (iter < 2);
+  } while (iter <= 2);
+
 }
 
 
@@ -746,7 +752,7 @@ int FindOpenRoam(int k) {
   int finalTurnAngle;                                   // Final turn angle
   int currentTurnIndex = sequenceOfScan[k];                   // Copy sequence[i] to local variable
   int kTemp = currentTurnIndex;                                      // Second copy of current sequence[i]
-  int inc;                                         // Increment/decrement variable
+  int seqInc;                                         // Increment/decrement variable
   int dt;                                          // Time increment
   int reconnaissanceRepeat = 0;                    // Repetitions count
   int minDistance;                                 // Minimum distance measurement
@@ -754,11 +760,11 @@ int FindOpenRoam(int k) {
 
   if (currentTurnIndex < (elementScanSequence / 2)) // Increment or decrement depending on where Sonar servo is pointing
   {
-    inc = 1;
+    seqInc = 1;
   }
   else
   {
-    inc = -1;
+    seqInc = -1;
   }
 
 
@@ -772,17 +778,17 @@ int FindOpenRoam(int k) {
       maneuver(0, 0, 1);
     }
 
-    currentTurnIndex += inc;                                        // Increment/decrement current Index
+    currentTurnIndex += seqInc;                                        // Increment/decrement current Index
     if (currentTurnIndex <= -1)                                     // Change inc/dec value if limit reached
     {
       currentTurnIndex = kTemp;
-      inc = -inc;
+      seqInc = -seqInc;
       dt = 250;                                      // Whole turn of servo timer
     }
     if (currentTurnIndex >= elementScanSequence)
     {
       currentTurnIndex = kTemp;
-      inc = -inc;
+      seqInc = -seqInc;
       dt = 250;
     }
 
@@ -793,7 +799,7 @@ int FindOpenRoam(int k) {
     dt = 100;                                        // Reset for small increment turn movement
     cm1[i] = cmDistance(1);                            // Take Ping measurement for the new robot heading
 
-  } while ((cm1[i] < tooCloseCmSonarReading) && (iter <= 10));                            // Keep checking to edge of obstacle
+  } while ((cm1[i] < tooCloseCmSonarReading) && (iter <= 3));                            // Keep checking to edge of obstacle
 
   minDistance = 1000;                                       // Initialize minimum distance to impossibly large value
   for (int t = 0; t < elementScanSequence; t++)
@@ -822,7 +828,7 @@ int FindOpenRoam(int k) {
 
   do {                                              // Loop for scan
     iter++;
-    currentTurnIndex += inc;                                       // Inc/dec Sonar servo position
+    currentTurnIndex += seqInc;                                       // Inc/dec Sonar servo position
     i = findIn(currentTurnIndex);                                  // Look up index for Sonar servo position
     servoSonarTheta = angleValueofsequenceOfScan[i];         // Position Sonar servo
     turnSonarServoToCertainDegree(servoSonarTheta, 100); //Position to turn
@@ -834,7 +840,7 @@ int FindOpenRoam(int k) {
       distanceMax = cm1[i];
       angleMax = sequenceOfScan[i];
     }
-  } while ((cm1[i] > tooCloseCmSonarReading) && (sequenceOfScan[i] != 0) && (sequenceOfScan[i] != 10) && (iter <= 10)); // 10 is the biggest number in the sequences
+  } while ((cm1[i] > tooCloseCmSonarReading) && (sequenceOfScan[i] != 0) && (sequenceOfScan[i] != 10) && (iter <= 3)); // 10 is the biggest number in the sequences
 
 
   finalTurnAngle = sequenceOfScan[i];                                  // Record final Sonar servo position
