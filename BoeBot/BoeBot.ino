@@ -103,7 +103,8 @@ const int secondSonarPingTrigerPin = 6; // Sonar triger pin
 const int secondSonarPingEchoPin = 7; //Sonar Echo Pin
 const int sonarServoPin = 11; // Sonar Servo
 const int leftWheelPin = 12; // Left whell servo
-const int rightWheelPin = 13; //Right wheel Servp
+const int rightWheelPin = 13; //Right wheel servo
+const int clawPin = 10; // claw servo pin for gripper
 const double sonarSensorOffsetX = 0.0; // Sonar sensor horizontal offset in m:s
 const double sonarSensorOffsetY = 10.5; // Sonar sensor vertical offset in m:s
 
@@ -186,6 +187,7 @@ void setup() { // Built in initialization block
   Serial.begin(serialInputNumber); // Make console listen to serial input
   servoLeft.attach(leftWheelPin);
   servoRight.attach(rightWheelPin);
+  servoClaw.attach(clawPin);
 
   //servoClaw.attach(clawPin); //Un-comment once claw servo has been dedicated to a pin and clawPin thereby has been set.
   //servoClaw.setMicroseconds(clawOpenPWMwidth); //Un-comment once servoClaw has been properly attached.
@@ -244,11 +246,10 @@ void loop() {
   Serial.print("currentState :"); //debug
   Serial.println(currentState); //debug
 
-
-
+ 
   if (currentState == 0)
   { //Default status
-
+    
     // Robot should here do general sensor checks, and when appropriate
     // decide on a behaviour. Otherwise move forward
     maneuver(100, 100);
@@ -286,10 +287,8 @@ void loop() {
 
     };
 
-
-
-
-  } else if (currentState == 1)
+  }
+  else if (currentState == 1)
   {
 
     if (cm1[sonarServoSeq] < tooCloseCmSonarReading)
@@ -318,25 +317,28 @@ void loop() {
   {
 
     int tempReturn = GetCloseToObstacle();
+    
     if (tempReturn == -1) {
       currentState = 0;
     };
 
 
-  } else if (currentState == 4)
+  } 
+    else if (currentState == 4)
   {
+
     //Grab the obstacle
     if (!clawGrippedObject)
     {
-      //clawServo.writeMicroseconds(clawGripPWMwidth);
+      // clawServo.writeMicroseconds(clawGripPWMwidth);
+      servoClaw.write(90); // Grips the can;
       clawGrippedObject = true;
     }
+    
     currentState = 5;
-
-
-  } else if (currentState == 5) //find the IRF beacon
+  } 
+    else if (currentState == 5) //find the IRF beacon
   {
-
     // currentState = 6; //To be enabled
 
 
@@ -361,6 +363,7 @@ void loop() {
     if (clawGrippedObject)
     {
       //clawServo.writeMicroseconds(clawOpenPWMwidth);
+      servoClaw.write(0); // Releases the can;
       clawGrippedObject = false;
     }
     currentState = 9;
