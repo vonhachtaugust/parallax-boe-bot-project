@@ -246,10 +246,10 @@ void loop() {
   Serial.print("currentState :"); //debug
   Serial.println(currentState); //debug
 
- 
+
   if (currentState == 0)
   { //Default status
-    
+
     // Robot should here do general sensor checks, and when appropriate
     // decide on a behaviour. Otherwise move forward
     maneuver(100, 100);
@@ -317,14 +317,14 @@ void loop() {
   {
 
     int tempReturn = GetCloseToObstacle();
-    
+
     if (tempReturn == -1) {
       currentState = 0;
     };
 
 
-  } 
-    else if (currentState == 4)
+  }
+  else if (currentState == 4)
   {
 
     //Grab the obstacle
@@ -334,10 +334,10 @@ void loop() {
       servoClaw.write(90); // Grips the can;
       clawGrippedObject = true;
     }
-    
+
     currentState = 5;
-  } 
-    else if (currentState == 5) //find the IRF beacon
+  }
+  else if (currentState == 5) //find the IRF beacon
   {
     // currentState = 6; //To be enabled
 
