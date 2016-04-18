@@ -1060,7 +1060,7 @@ int GetDirectionToSafeZone() {
   for (int k = 1; k <= elementScanSequence - 1 ; k++) {
     tempDistance = irTemp[findIn(k)];
 
-    if (tempDistance < minTempDistance) {
+    if (tempDistance == 0) {
       minTempDistance = tempDistance;
       tempDegreeK = k;
       Flag = 1;
