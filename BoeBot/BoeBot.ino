@@ -3,10 +3,11 @@
 /*         Digital port: D1..D13
            Analog port: A0..A5
    /////////////////////////////////////////////////////////////////////////
+DIGITAL
    D0:
-   D1:
-   D2:IRF Led Left turn on
-   D3:IRF Led Right turn on
+   D1:Countermenasurment Sonar Triger Pin     // For oponents
+   D2:IRF Led Left turn on/off
+   D3:IRF Led Right turn on/off
    D4:firstSonarPingTrigerPin
    D5:firstSonarPingEchoPin
    D6:SecondSonarPingTrigerPin
@@ -18,10 +19,11 @@
    D12:leftWheelPin
    D13:rightWheelPin
 
-   A0:IRF Reciever Turn on
-   A1:
+ANALOG
+   A0:IRF Reciever Right Turn on
+   A1:IRF Reeciever Left Turn on
    A2:
-   A3:
+   A3:IRF countermensurment Turn on/off     //For oponents
    A4:leftPhototransistor
    A5:rightPhototransistor
 
@@ -1036,24 +1038,30 @@ boolean GetDirectionToSafeZone() {
 
   int tempDegree;
   int temp;
+  int guessedTemp = 0;
+  int guessedTempNum = 0;
+
   if (flagFirstTimeGrabObstacle) {
     maneuver(-100, -100, 500);
     flagFirstTimeGrabObstacle = 0;
   }
   maneuver(0, 0);
   boolean flag = 0;
-  for (int j = 0; j < 1; j++) {
-    if (flag) break;
 
-    for (int k = 0; k < elementScanSequence ; k++) {
-      tempDegree = angleValueofsequenceOfScan[k];
-      turnSonarServoToCertainDegree(tempDegree, 100); // full rotation of servo is 250 miliseconds
-      if (irRead(IRFReceiverPinRight) == 1) {
-        flag = 1;
-        break;
-      }
-    } //FOR k
-  }//For j
+
+  for (int k = 0; k < elementScanSequence ; k++) {
+    tempDegree = angleValueofsequenceOfScan[k];
+    turnSonarServoToCertainDegree(tempDegree, 100); // full rotation of servo is 250 miliseconds
+    if (irRead(IRFReceiverPinRight) == 1) {
+      flag = 1;
+      break;
+    }
+    if (irRead(IRFReceiverPinLeft) == 1) {
+      guessedTemp += angleValueofsequenceOfScan[k];
+      guessedTempNum++;
+    }
+  } //FOR k
+
 
   if (flag) {
     temp = getObjectRobotRelAngle(1, tempDegree);
@@ -1065,13 +1073,26 @@ boolean GetDirectionToSafeZone() {
       maneuver(0, 0);
     }
     return 1;
-  } else
+  } else if (~guessedTempNum)
   {
     maneuver(200, -200, (180)*msPerTurnDegree); //Full rotate
     maneuver(0, 0);
+    return 0;
   }
 
-  return 0;
+  if (guessedTempNum) {
+    temp = guessedTemp / guessedTemp;
+    if (temp < 90) {
+      maneuver(200, -200, (90 - temp)*msPerTurnDegree);
+      maneuver(0, 0);
+    } else if (temp > 90) {
+      maneuver(-200, 200, (temp - 90)*msPerTurnDegree);
+      maneuver(0, 0);
+    }
+    maneuver(-200, 200,500);
+    maneuver(0, 0);
+  }
+
 } //function
 
 
