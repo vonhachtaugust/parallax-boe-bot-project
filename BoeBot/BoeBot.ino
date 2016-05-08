@@ -37,7 +37,7 @@ ANALOG
    /////////////////////////////////////////////////////////////////////////
 
 
-  void initiateTurnTowardsGoalZoneState() :Function for initiating state 1
+  void InitiateTurnTowardsGoalZone() :Function for initiating state 1
 
   boolean sensorBelowThreshold(int Ax) :Function for checking if sensor reading is small enough
 
@@ -289,7 +289,7 @@ void loop() {
         }
       }
     } else {                                                                                           /// if grabbed 
-      if (initiateTurnTowardsGoalZoneState()) {
+      if (InitiateTurnTowardsGoalZone()) {
         currentState = 8;
       } else
       {
@@ -359,7 +359,7 @@ void loop() {
   {
     noTone(countIRFBeacon);
     tone(countSonarTrigerPin,50000);
-    if (initiateTurnTowardsGoalZoneState()) {
+    if (InitiateTurnTowardsGoalZone()) {
       currentState = 8;
     } else {
 
@@ -385,7 +385,7 @@ void loop() {
   {
     noTone(countIRFBeacon);
     tone(countSonarTrigerPin,50000);
-    tempReachGoalFlag = initiateTurnTowardsGoalZoneState();  
+    tempReachGoalFlag = InitiateTurnTowardsGoalZone();  
     if (tempReachGoalFlag == 1)
     {
       maneuver(0, 0);
@@ -455,7 +455,7 @@ void loop() {
 /*
    Function for initiating state 1
 */
-boolean initiateTurnTowardsGoalZoneState() {
+boolean InitiateTurnTowardsGoalZone() {
   // determine which way to turn
   digitalWrite(IRFLedLeft, HIGH);
   digitalWrite(IRFLedRight, HIGH);
@@ -476,7 +476,7 @@ boolean initiateTurnTowardsGoalZoneState() {
       rightWheelRotSpeed = maxForwardSpeed;
     }
 
-    maneuver(leftWheelRotSpeed, rightWheelRotSpeed,50);
+    maneuver(leftWheelRotSpeed, rightWheelRotSpeed,150);
     maneuver(0, 0);
     if (checkPhototransistors()) {
       digitalWrite(IRFLedLeft, LOW);
