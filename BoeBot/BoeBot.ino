@@ -4,8 +4,8 @@
            Analog port: A0..A5
    /////////////////////////////////////////////////////////////////////////
 DIGITAL
-   D0:
-   D1:Countermenasurment Sonar Triger Pin     // For oponents
+   D0:IRF beacon countermensurment Turn on/off     //For opponents
+   D1:Countermenasurment Sonar Triger Pin     // For opponents
    D2:IRF Led Left turn on/off
    D3:IRF Led Right turn on/off
    D4:firstSonarPingTrigerPin
@@ -20,10 +20,10 @@ DIGITAL
    D13:rightWheelPin
 
 ANALOG
-   A0:IRF Reciever Right Turn on
-   A1:IRF Reeciever Left Turn on
+   A0:IRF Reciever Right Turn on/off
+   A1:
    A2:
-   A3:IRF countermensurment Turn on/off     //For oponents
+   A3:
    A4:leftPhototransistor
    A5:rightPhototransistor
 
@@ -83,17 +83,15 @@ ANALOG
 
   void ClawRelease(): To reloase obstacle
 
-  boolean irRead(IRFReceiverPinRight) : Read IRF RECIEVER /  0:Detect  1: no detction
+  boolean IRFRead(IRFReceiverPinRight) : Read IRF RECIEVER /  0:Detect  1: no detction
 
   int GetDirectionToSafeZone() : Get direction to safe zone function
 
 */
 
 
-
 //************************************************************************************************************************************************************
 //************************************************************************************************************************************************************
-
 
 #include <Servo.h> // Include servo library
 
@@ -104,34 +102,31 @@ Servo sonarServo;  // create servo object to control a servo
 
 
 // Robot hardware parameters
-const int rightPhototransistor = 5;
-const int leftPhototransistor = 4;
-const int firstSonarPingTrigerPin = 6; // Sonar triger pin
-const int firstSonarPingEchoPin = 7; //Sonar Echo Pin
-const int secondSonarPingTrigerPin = 4; // Sonar triger pin
-const int secondSonarPingEchoPin = 5; //Sonar Echo Pin
-const int IRFReceiverPinRight = 8; //IRF reciever Pin
-const int IRFLedLeft = 2; //To Turn on IRF LED
-const int IRFLedRight = 3; // To turn on IRF Led
-const char IRFSensor5Voltage = A0; // TO TURN ON IRF RECIEVER
-const int IRFReceiverPinLeft = 9;
-const int sonarServoPin = 11; // Sonar Servo
-const int leftWheelPin = 12; // Left whell servo
-const int rightWheelPin = 13; //Right wheel servo
-const int clawPin = 10; // claw servo pin for gripper
-const double sonarSensorOffsetX = 0.045; // Sonar sensor horizontal offset in m:s
-const double sonarSensorOffsetY = 0.115; // Sonar sensor vertical offset in m:s
+const char countIRFBeacon=0; // To generate signal for countermeasurment
+const byte countSonarTrigerPin=1; //Countermenasurment Sonar Triger Pin
+const byte IRFLedLeft = 2; //To Turn on IRF LED
+const byte IRFLedRight = 3; // To turn on IRF Led
+const byte secondSonarPingTrigerPin = 4; // Sonar triger pin
+const byte secondSonarPingEchoPin = 5; //Sonar Echo Pin
+const byte firstSonarPingTrigerPin = 6; // Sonar triger pin
+const byte firstSonarPingEchoPin = 7; //Sonar Echo Pin
+const byte IRFReceiverPinRight = 8; //IRF reciever Pin
+const byte IRFReceiverPinLeft = 9;
+const byte clawPin = 10; // claw servo pin for gripper
+const byte sonarServoPin = 11; // Sonar Servo
+const byte leftWheelPin = 12; // Left whell servo
+const byte rightWheelPin = 13; //Right wheel servo
 
-
-const int serialInputNumber = 9600; //bps channel for serial input
-
+const char IRFRightSensor5Voltage = A0; // TO TURN ON/off IRF RECIEVER
+const char leftPhototransistor = A4;
+const char rightPhototransistor = A5;
 
 // FSM variables
-int currentState;
-int nextState;
-int nextStateTime;
-int numIterations;
-int currentTime;
+byte currentState;
+byte nextState;
+byte nextStateTime;
+byte numIterations;
+byte currentTime;
 boolean aboutToCollide; // To check if BoeBot is in the goal area
 boolean clawGrippedObjectFlag = false; // To check if claw has gripped an object, initially assumed to be false.
 boolean moveTowardSafeFlag = 0;
@@ -142,7 +137,6 @@ int maxForwardSpeed = 200; // Max Forward speed
 int linearForwardSpeed = 100; // linear speed
 int maxBackwardSpeed =  -200;//Max Backward speed
 int linearBackwardSpeed = -100; // linear backward speed
-
 float photoTransistorThreshold = 0.20; // Sensor measuring parameters
 float sensorErrorMarginCorner = 0.02;
 const int msPerTurnDegree = 6;                     // delay for maneuvers each cycle
@@ -167,9 +161,11 @@ const int sonarOpeningAngle = 180; // Opening angle for the sonar
 const int sonarForwardAngle = 90; // The angle for which the sonar is pointing forwards
 const int degreesStepTurnSonarServo = sonarOpeningAngle / (10); // degree differences in the Sonar servo sequences
 const int maxDistanceWallObstacleDetect = 80; //Maximum distance from robto for an object or wall to be detected
-int sonarServoSeq;
+byte sonarServoSeq;
 int  upSonarRead;
 int downSonarRead;
+const float sonarSensorOffsetX = 0.045; // Sonar sensor horizontal offset in m:s
+const float sonarSensorOffsetY = 0.115; // Sonar sensor vertical offset in m:s
 
 
 // Simulation variables
@@ -178,8 +174,10 @@ int inc = 1;
 int incTemp;
 boolean tempReachGoalFlag = 0;
 boolean flagFirstTimeGrabObstacle = 0;
+const byte sonarReadAvg=5;
 
-
+//Debug parameter
+const int serialInputNumber = 9600; //bps channel for serial input
 
 
 //********************************************************** INITIALIZATION *************************************************************************************
@@ -203,19 +201,22 @@ void setup() { // Built in initialization block
   sonarServo.attach(sonarServoPin);  // attaches the servo on pin 11 for sonar
   ConvertServoSequenceToDegree();
   sonarServoSeq = minIndexOfSequenceCollisionAvoidance - 1;
-  servoClaw.write(20);
+  servoClaw.write(15);
   pinMode(IRFLedLeft, OUTPUT);
   digitalWrite(IRFLedLeft, LOW);
   pinMode(IRFLedRight, OUTPUT);
   digitalWrite(IRFLedRight, LOW);
-  pinMode(IRFSensor5Voltage, OUTPUT);
-  digitalWrite(IRFSensor5Voltage, LOW);
+  pinMode(IRFRightSensor5Voltage, OUTPUT);
+  digitalWrite(IRFRightSensor5Voltage, LOW);
+  pinMode(firstSonarPingTrigerPin, OUTPUT);
+  pinMode(secondSonarPingTrigerPin, OUTPUT);
+  pinMode(countSonarTrigerPin, OUTPUT);
+  pinMode(countIRFBeacon, OUTPUT);
+  tone(countIRFBeacon,37500);
 
   turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarServoSeq], 100); // full rotation of servo is 250 miliseconds
 
 }
-
-
 
 
 //************************************************************* MAIN LOOP *******************************************************************************
@@ -238,8 +239,7 @@ void loop() {
 
 
 
-
-  //***************************************************** FSM ************************************************************************
+//********************************************************************************** FSM ************************************************************************
 
   /* Add yr Robot's name here :)
     Brain of Robot Karl's:Carlo /Babak's: MICH-V1 /
@@ -260,32 +260,36 @@ void loop() {
   if (currentState == 0) //Default status                                                    ////////////////////////////////////State 0
   {
 
-    maneuver(100, 100);
+    maneuver(maxForwardSpeed, maxForwardSpeed);
     sonarServoSeq += inc;
     incTemp = inc;
-    if ((sonarServoSeq < 1) || (sonarServoSeq > elementScanSequence - 2 )) inc = -inc;                     // Change inc/dec value if limit reached
+    if ((sonarServoSeq < 1) || (sonarServoSeq > elementScanSequence - 2 )) inc = -inc;                    
     int tempValue1 = 0;
     int tempValue2 = 0;
-    for (int t = 0; t < 10; t++) {
+    for (int t = 0; t < sonarReadAvg ; t++) {
       tempValue1 += cmDistance(1);
       tempValue2 += cmDistance(2);
     }
-    upSonarRead = tempValue1 / 10;
-    downSonarRead = tempValue2 / 10;
+    upSonarRead = tempValue1 / sonarReadAvg;
+    downSonarRead = tempValue2 / sonarReadAvg;
 
     turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarServoSeq], 100);
 
     if (!clawGrippedObjectFlag) {
+      if ((tempValue1>10000)||(tempValue2>10000)){
+        distanceDiffSonarsRead=0;
+        }else{  
       distanceDiffSonarsRead = abs(upSonarRead - downSonarRead);
+        }
       if ((upSonarRead > 0) && (upSonarRead < maxUpSonarRange) && (downSonarRead < maxDownSonarRange)) {
         if ((upSonarRead < maxDistanceWallObstacleDetect) || (downSonarRead < maxDistanceWallObstacleDetect)) {
           currentState = 1;
         } else {
-          maneuver(maxForwardSpeed, maxForwardSpeed); //Move forward
+          maneuver(maxForwardSpeed, maxForwardSpeed); 
         }
       }
-    } else {
-      if (initiateTurnTowardsGoalZoneState() == 1) {
+    } else {                                                                                           /// if grabbed 
+      if (initiateTurnTowardsGoalZoneState()) {
         currentState = 8;
       } else
       {
@@ -297,8 +301,10 @@ void loop() {
       }
     }
   }
-  else if (currentState == 1)                                                ///////////////////////////////////////////State 1
+  else if (currentState == 1)                                                           ///////////////////////////////////////////State 1
   {
+    noTone(countSonarTrigerPin);
+    tone(countIRFBeacon,37500);
 
     if (upSonarRead < tooCloseCmSonarReading)
     {
@@ -311,19 +317,20 @@ void loop() {
     } else
     {
       currentState = 0;
-      //currentState = 9; //Disable for now should be 9
     };
 
 
-  } else if (currentState == 2) // Turn away from wall                                    ///////////////////////////////state 2
+  } else if (currentState == 2)                                                         ///////////////////////////////state 2
   {
-
+    noTone(countSonarTrigerPin);
+    tone(countIRFBeacon,37500);
     WallCornerAvoidance();
     currentState = 0;
 
-
-  } else if (currentState == 3) //Get close to obstacle                                    ///////////////////////////////state 3
+  } else if (currentState == 3)                                                          ///////////////////////////////state 3
   {
+    noTone(countSonarTrigerPin);
+    tone(countIRFBeacon,37500);
     int tempDeg = getObjectRobotRelAngle(1, angleValueofsequenceOfScan[sonarServoSeq - incTemp]);
     int tempReturn = GetCloseToObstacle(tempDeg);
 
@@ -336,22 +343,22 @@ void loop() {
       turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarServoSeq], 100);
     };
 
-
   }
   else if (currentState == 4)                                                              ///////////////////////////////state 4
   {
-
-    //Grab the obstacle
+    noTone(countIRFBeacon);
+    tone(countSonarTrigerPin,50000);
     if (!clawGrippedObjectFlag)
     {
       ClawGrip();
-      digitalWrite(IRFSensor5Voltage, HIGH);
+      digitalWrite(IRFRightSensor5Voltage, HIGH);
     }
-    // currentState = 8; //for test
     currentState = 5;
   }
-  else if (currentState == 5) //find the IRF beacon                                           ///////////////////////////////state 5
+  else if (currentState == 5)                                                              ///////////////////////////////state 5
   {
+    noTone(countIRFBeacon);
+    tone(countSonarTrigerPin,50000);
     if (initiateTurnTowardsGoalZoneState()) {
       currentState = 8;
     } else {
@@ -361,21 +368,24 @@ void loop() {
       if (moveTowardSafeFlag == 1) {
         currentState = 6;   //Maybe to impliment different
       } else {
+        maneuver(100, 100,500);
         currentState = 0;
-      };
-
+      }
     }
-  } else if (currentState == 6) //move toward the goal area untill reaches there              ///////////////////////////////state 6
+  } else if (currentState == 6)                                                             ///////////////////////////////state 6
   {
-    //sonarServoSeq=8;
-    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[8], 100);
+    noTone(countIRFBeacon);
+    tone(countSonarTrigerPin,50000);
+    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[8], 5);
 
     maneuver(100, 100);
     currentState = 7;
 
-  } else if (currentState == 7) //Enter with the right angle into the goal area               ///////////////////////////////state 7
+  } else if (currentState == 7)                                                              ///////////////////////////////state 7
   {
-    tempReachGoalFlag = initiateTurnTowardsGoalZoneState(); //return 1 if it is in the black totally/ 0 if it had turned or not in black area at all
+    noTone(countIRFBeacon);
+    tone(countSonarTrigerPin,50000);
+    tempReachGoalFlag = initiateTurnTowardsGoalZoneState();  
     if (tempReachGoalFlag == 1)
     {
       maneuver(0, 0);
@@ -384,46 +394,47 @@ void loop() {
     }
     else {
 
-      if (irRead(IRFReceiverPinRight)) {
+      if (IRFRead(IRFReceiverPinRight)) {
         currentState = 6;
       } else {
         currentState = 0;
       }
     }
 
-
-
-  } else if (currentState == 8)  //release the obstacle                                      ///////////////////////////////state 8
+  } else if (currentState == 8)                                                           ///////////////////////////////state 8
   {
-
-    if (clawGrippedObjectFlag)
+        if (clawGrippedObjectFlag)
     {
       ClawRelease();
       currentState = 9;
     } else {
       currentState = 0;
     }
+    noTone(countIRFBeacon);
+    tone(countSonarTrigerPin,50000);
 
   } else if (currentState == 9)                                                              ///////////////////////////////state 9
   {
-    digitalWrite(IRFSensor5Voltage, LOW);
+    digitalWrite(IRFRightSensor5Voltage, LOW);
     turnAwayFromGoalArea();
     currentState = 0;
+    
+    noTone(countIRFBeacon);
+    noTone(countSonarTrigerPin);
   }
 
-  delay(timeStep);
   numIterations++;
 
 
-  /*  Serial.print("====================================================");// debug
+    Serial.print("====================================================");// debug
     Serial.print("currentState :"); //debug
     Serial.println(currentState); //debug
-    Serial.println("--------------------");
+  Serial.println("--------------------");
     Serial.print("CM1: "); Serial.println(cmDistance(1));
     Serial.print("CM2: "); Serial.println(cmDistance(2));
     delay(1);
 
-    Serial.print("distanceDiffSonarsRead :"); //debug
+/*    Serial.print("distanceDiffSonarsRead :"); //debug
     Serial.println(distanceDiffSonarsRead); //debug
     printTransistorReadings();//debug
     Serial.print("IR read Right :"); //debug
@@ -436,8 +447,6 @@ void loop() {
     delay(250);
   */
 }
-
-
 //**********************************************************************************************************************************
 //************************************************************* FUNCTIONS **********************************************************
 
@@ -467,7 +476,7 @@ boolean initiateTurnTowardsGoalZoneState() {
       rightWheelRotSpeed = maxForwardSpeed;
     }
 
-    maneuver(leftWheelRotSpeed, rightWheelRotSpeed);
+    maneuver(leftWheelRotSpeed, rightWheelRotSpeed,50);
     maneuver(0, 0);
     if (checkPhototransistors()) {
       digitalWrite(IRFLedLeft, LOW);
@@ -570,16 +579,12 @@ float getVoltsByPin(int adPin) {
 
 
 
-
-
-
 /////////////////////////////////////////////////////////// Sonar functions ////////////////////////////////////////////////////////////////////////////
 /*
   First Sonar reading function and its calculation
 */
 int FirstSonarReadingDistance() {
   //Ping
-  pinMode(secondSonarPingTrigerPin, OUTPUT);
   digitalWrite(secondSonarPingTrigerPin, LOW);
   delayMicroseconds(2);
   digitalWrite(secondSonarPingTrigerPin, HIGH);
@@ -587,13 +592,9 @@ int FirstSonarReadingDistance() {
   digitalWrite(secondSonarPingTrigerPin, LOW);
   //read
   pinMode(secondSonarPingEchoPin, INPUT);
-  int  duration = pulseIn(secondSonarPingEchoPin, HIGH);
-
-  // convert the time into a distance
-
+  int  duration = pulseIn(secondSonarPingEchoPin, HIGH,50000);
   return duration ;
 }
-
 
 
 /*
@@ -601,7 +602,6 @@ int FirstSonarReadingDistance() {
 */
 int SecondSonarReadingDistance() {
   //Ping
-  pinMode(firstSonarPingTrigerPin, OUTPUT);
   digitalWrite(firstSonarPingTrigerPin, LOW);
   delayMicroseconds(2);
   digitalWrite(firstSonarPingTrigerPin, HIGH);
@@ -609,10 +609,7 @@ int SecondSonarReadingDistance() {
   digitalWrite(firstSonarPingTrigerPin, LOW);
   //read
   pinMode(firstSonarPingEchoPin, INPUT);
-  int  duration = pulseIn(firstSonarPingEchoPin, HIGH);
-
-  // convert the time into a distance
-
+  int  duration = pulseIn(firstSonarPingEchoPin, HIGH,50000);
   return duration ;
 }
 
@@ -625,6 +622,9 @@ int SecondSonarReadingDistance() {
 */
 int cmDistance(int num)
 {
+  
+  noTone(countIRFBeacon);
+  noTone(countSonarTrigerPin);
   int us;
   int usTocm = 29;                                 // Ping conversion constant
   int distance = 0;                                // Initialize distance to zero
@@ -640,11 +640,10 @@ int cmDistance(int num)
     iter++;
     distance = us / usTocm / 2; // Convert to cm measurement
     delay(3);                                      // Pause before retry (if needed)
-  }
-  while ((distance == 0) && (iter < maxIter));                         //To cancel the error of Sonar reading and reduce noise
+  }while ((distance == 0) && (iter < maxIter));                         //To cancel the error of Sonar reading and reduce noise
+  if (distance == 0) distance=100000;
   return abs(distance);                                 // Return distance measurement
 }
-
 
 
 /*
@@ -656,7 +655,6 @@ void ConvertServoSequenceToDegree() {
     angleValueofsequenceOfScan[i] = sequenceOfScan[i] * degreesStepTurnSonarServo;
   }
 }
-
 
 
 /*
@@ -704,8 +702,6 @@ void WallCornerAvoidance() {
   } while (iter < 2);////// improved
 
 }
-
-
 
 
 /*
@@ -774,7 +770,7 @@ int FindOpenRoam(int k) {                                                       
 
   if (minDistance < bumpedCmSonarReading)                                      // If less than 6 cm, back up a little
   {
-    maneuver(maxBackwardSpeed, maxBackwardSpeed, 300);                            //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! to check the timer
+    maneuver(maxBackwardSpeed, maxBackwardSpeed, 500);                         
     currentTurnIndex = -1;                                          // Get Sonar servo ready to start over
   }
 
@@ -872,8 +868,8 @@ double getObjectRobotRelAngle(double sensorReading, double sensorAngle) {
   if (val < 0) {
     val = 180 + val;
   };
-  Serial.print("val:");
-  Serial.println(val);
+ // Serial.print("val:");
+ // Serial.println(val);
   //delay(10000);
   return val;
 }
@@ -892,7 +888,6 @@ int GetCloseToObstacle(int degree) {      //////////////////////////////////Impr
     maneuver(0, 0);
   }
 
-  //int sequenceScan[] = {80,90,100 };
   boolean tempFlag = 0;
   int cm1Temp[sizeof(sequenceOfScan)];
   int cm2Temp[sizeof(sequenceOfScan)];
@@ -907,19 +902,19 @@ int GetCloseToObstacle(int degree) {      //////////////////////////////////Impr
   int tempValue2;
   int tempDis = 1000;
   int tempDisCurrent;
-  int delayFirsttime = 200;
-
-  for (int k = 0; k < elementScanSequence ; k++) {
-    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[k], delayFirsttime); // full rotation of servo is 250 miliseconds
-    delayFirsttime = 100;
+  turnSonarServoToCertainDegree(angleValueofsequenceOfScan[0], 200);
+  cm1Temp[0] = cmDistance(1) ;
+    cm2Temp[0] = cmDistance(2);
+  for (int k = 1; k < elementScanSequence ; k++) {
+    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[k], 50); // full rotation of servo is 250 miliseconds
     tempValue1 = 0;
     tempValue2 = 0;
-    for (int t = 0; t < 10; t++) {
+    for (int t = 0; t < sonarReadAvg; t++) {
       tempValue1 += cmDistance(1);
       tempValue2 += cmDistance(2);
     } //t for
-    cm1Temp[k] = tempValue1 / 10;
-    cm2Temp[k] = tempValue2 / 10;
+    cm1Temp[k] = tempValue1 / sonarReadAvg;
+    cm2Temp[k] = tempValue2 / sonarReadAvg;
   } //k FOR
 
   int tempDegree;
@@ -1012,30 +1007,31 @@ void ClawRelease() {
 
 }
 
+
 /////////////////////////////////////////////////////////////////////////IR RECEIVER////////////////////////////////////////////////////////////////////
 /*
    Read IRF RECIEVER
 */
-boolean irRead(int  readPin)
+boolean IRFRead(int  readPin)
 {
-  //int temp=1;
+  noTone(countIRFBeacon);
+  noTone(countSonarTrigerPin);
   int temp1;
   int temp2 = 0;
   for (int i = 0; i < 120; i++) {
     temp1 = digitalRead(readPin);
     delay(1);
-    //temp*=temp1;
     if (temp1 == 0)
       return 1;
   }
   return 0;
 }
 
+
 /*
    Get direction to safe zone function
 */
 boolean GetDirectionToSafeZone() {
-
   int tempDegree;
   int temp;
   int guessedTemp = 0;
@@ -1052,11 +1048,11 @@ boolean GetDirectionToSafeZone() {
   for (int k = 0; k < elementScanSequence ; k++) {
     tempDegree = angleValueofsequenceOfScan[k];
     turnSonarServoToCertainDegree(tempDegree, 100); // full rotation of servo is 250 miliseconds
-    if (irRead(IRFReceiverPinRight) == 1) {
+    if (IRFRead(IRFReceiverPinRight) == 1) {
       flag = 1;
       break;
     }
-    if (irRead(IRFReceiverPinLeft) == 1) {
+    if (IRFRead(IRFReceiverPinLeft) == 1) {
       guessedTemp += angleValueofsequenceOfScan[k];
       guessedTempNum++;
     }
@@ -1089,15 +1085,11 @@ boolean GetDirectionToSafeZone() {
       maneuver(-200, 200, (temp - 90)*msPerTurnDegree);
       maneuver(0, 0);
     }
-    maneuver(-200, 200,500);
+    maneuver(100, 100,800);
     maneuver(0, 0);
   }
 
 } //function
-
-
-
-
 
 
 ///////////////////////////////////////////////////////////////////////////////////////// DEBUGGERS ///////////////////////////////////////////////
@@ -1124,4 +1116,6 @@ void GetCloseToObstacleV2() {
   delay(1);
 
 }
+
+
 
