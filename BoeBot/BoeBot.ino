@@ -191,7 +191,7 @@ void setup() { // Built in initialization block
 
   maxNumIterations = float(maxRunTime) / (timeStep * 0.001);
 
-  currentState = 0;                                                       //               initial state, search
+  currentState = 100;                                                       //               initial state, search
   nextState = 0;
   nextStateTime = -1;
   Serial.begin(serialInputNumber); // Make console listen to serial input
@@ -426,26 +426,27 @@ void loop() {
   numIterations++;
 
 
-    Serial.print("====================================================");// debug
-    Serial.print("currentState :"); //debug
-    Serial.println(currentState); //debug
-  Serial.println("--------------------");
-    Serial.print("CM1: "); Serial.println(cmDistance(1));
-    Serial.print("CM2: "); Serial.println(cmDistance(2));
-    delay(1);
+  //  Serial.print("====================================================");// debug
+  //  Serial.print("currentState :"); //debug
+  //  Serial.println(currentState); //debug
+ // Serial.println("--------------------");
+  //  Serial.print("CM1: "); Serial.println(cmDistance(1));
+  //  Serial.print("CM2: "); Serial.println(cmDistance(2));
+  //  delay(1);
 
-/*    Serial.print("distanceDiffSonarsRead :"); //debug
-    Serial.println(distanceDiffSonarsRead); //debug
-    printTransistorReadings();//debug
-    Serial.print("IR read Right :"); //debug
-    Serial.println(irRead(IRFReceiverPinRight)); //debug
-    Serial.print("IR read Left :"); //debug
-    Serial.println(irRead(IRFReceiverPinLeft)); //debug
+//    Serial.print("distanceDiffSonarsRead :"); //debug
+//    Serial.println(distanceDiffSonarsRead); //debug
+//    printTransistorReadings();//debug
+//    Serial.print("IR read Right :"); //debug
+//    Serial.println(IRFRead(IRFReceiverPinRight)); //debug
+IRFRead(IRFReceiverPinRight);
+//    Serial.print("IR read Left :"); //debug
+ //   Serial.println(IRFRead(IRFReceiverPinLeft)); //debug
     // Serial.println(irDetect( ));
     //Serial.println("photo Diff:");
     //Serial.print(differenceLeftRigthPhotoSensor());
-    delay(250);
-  */
+   // delay(250);
+ 
 }
 //**********************************************************************************************************************************
 //************************************************************* FUNCTIONS **********************************************************
@@ -1017,7 +1018,6 @@ boolean IRFRead(int  readPin)
   noTone(countIRFBeacon);
   noTone(countSonarTrigerPin);
   int temp1;
-  int temp2 = 0;
   for (int i = 0; i < 120; i++) {
     temp1 = digitalRead(readPin);
     delay(1);
@@ -1077,7 +1077,7 @@ boolean GetDirectionToSafeZone() {
   }
 
   if (guessedTempNum) {
-    temp = guessedTemp / guessedTemp;
+    temp = guessedTemp / guessedTempNum;
     if (temp < 90) {
       maneuver(200, -200, (90 - temp)*msPerTurnDegree);
       maneuver(0, 0);
@@ -1117,5 +1117,8 @@ void GetCloseToObstacleV2() {
 
 }
 
-
+   // Serial.print("IR read Right :"); //debug
+   // Serial.println(IRFRead(IRFReceiverPinRight)); //debug
+   // Serial.print("IR read Left :"); //debug
+   // Serial.println(IRFRead(IRFReceiverPinLeft)); //debug
 
