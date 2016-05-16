@@ -829,10 +829,11 @@ int GetCloseToObstacle(int degree) {      //////////////////////////////////Impr
   int tempDis = 1000;
   int tempDisCurrent;
   int delayFirsttime = 200;
-
-  for (int k = 0; k < elementScanSequence ; k++) {
-    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[k], delayFirsttime); // full rotation of servo is 250 miliseconds
-    delayFirsttime = 100;
+  turnSonarServoToCertainDegree(angleValueofsequenceOfScan[0], 200);
+   cm1Temp[0] = cmDistance(1) ;
+     cm2Temp[0] = cmDistance(2);
+   for (int k = 1; k < elementScanSequence ; k++) {
+     turnSonarServoToCertainDegree(angleValueofsequenceOfScan[k], 50); // full rotation of servo is 250 miliseconds
     tempValue1 = 0;
     tempValue2 = 0;
     for (int t = 0; t < avgSonarNum; t++) {
@@ -1013,7 +1014,8 @@ boolean GetDirectionToSafeZone() {
 
 } //function
 
-//Iintiate random walk while graping the obstacles
+
+//Initiale random walk while graping the obstacles
 void TempRandomWalk() {
   int sonarSeq = minIndexOfSequenceCollisionAvoidance - 1;
   int inc = 1;
@@ -1032,11 +1034,11 @@ void TempRandomWalk() {
     int upSonar = tempValue1 / 2;
     int downRead = tempValue2 / 2;
 
-    if (GetDirectionToSafeZone()) {
+    if (irRead(IRFReceiverPinLeft)) {
       break;
     }
+    
     turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarSeq], 50);
-
     if (upSonarRead < 25) {
       WallCornerAvoidance();
     } else {
