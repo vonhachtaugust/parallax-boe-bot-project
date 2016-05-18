@@ -137,7 +137,7 @@ int linearForwardSpeed = 100; // linear speed
 int maxBackwardSpeed =  -200;//Max Backward speed
 int linearBackwardSpeed = -100; // linear backward speed
 
-float photoTransistorThreshold = 0.20; // Sensor measuring parameters
+float photoTransistorThreshold = 0.30; // Sensor measuring parameters
 float sensorErrorMarginCorner = 0.02;
 const int msPerTurnDegree = 6;                     // delay for maneuvers each cycle
 const int tooCloseCmSonarReading = 30;                         // For distance decisions of Sonar reading
@@ -269,7 +269,7 @@ void loop() {
       }
     }
   }
-  else if (currentState == 1) -------------------------------------------------///////////////////////////////////////////State 1
+  else if (currentState == 1) //-------------------------------------------------///////////////////////////////////////////State 1
   {
     if (upSonarRead < tooCloseCmSonarReading)
     {
@@ -310,7 +310,7 @@ void loop() {
     };
   }
   }
-  else if (currentState == 4) --------------------------------------------------------------///////////////////////////////state 4
+  else if (currentState == 4) //--------------------------------------------------------------///////////////////////////////state 4
   {
     digitalWrite(IRFSensor5Voltage, HIGH);
     
@@ -357,7 +357,7 @@ void loop() {
       }
     }
 
-  } else if (currentState == 8) --------------------------------------------------------------///////////////////////////////state 8
+  } else if (currentState == 8) //--------------------------------------------------------------///////////////////////////////state 8
   {
 
     if (clawGrippedObjectFlag)
@@ -368,7 +368,7 @@ void loop() {
       currentState = 0;
     }
 
-  } else if (currentState == 9)---------------------------------------------------------------///////////////////////////////state 9
+  } else if (currentState == 9)//---------------------------------------------------------------///////////////////////////////state 9
   {
     digitalWrite(IRFSensor5Voltage, LOW);
     turnAwayFromGoalArea();
