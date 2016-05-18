@@ -84,6 +84,10 @@
 
   int GetDirectionToSafeZone() : Get direction to safe zone function
 
+  void TurnBot(int degree) To turn the robott in certain angle
+
+  void TempRandomWalk() Initiale random walk while graping the obstacles
+
 */
 
 
@@ -115,9 +119,9 @@ const int leftWheelPin = 12; // Left whell servo
 const int rightWheelPin = 13; //Right wheel servo
 const int clawPin = 10; // claw servo pin for gripper
 const double sonarSensorOffsetX = 0.045; // Sonar sensor horizontal offset in m:s
-const double sonarSensorOffsetY = 0.115; // Sonar sensor vertical offset in m:s
+const double sonarSensorOffsetY = 0.112; // Sonar sensor vertical offset in m:s
 
-const int serialInputNumber = 9600; //bps channel for serial input
+//const int serialInputNumber = 9600; //bps channel for serial input
 
 
 // FSM variables
@@ -158,7 +162,8 @@ const int maxDistanceWallObstacleDetect = 80; //Maximum distance from robto for 
 int sonarServoSeq;
 int  upSonarRead;
 int downSonarRead;
-int avgSonarNum = 5;
+int avgSonarWander=5; // number of average for sonar reading to reduce noise
+int avgSonarNum = 15; // number of average for sonar reading to reduce noise
 
 
 // Simulation variables
@@ -177,7 +182,7 @@ boolean flagFirstTimeGrabObstacle = 0;
 void setup() { // Built in initialization block
 
   currentState = 0;                                                       //               initial state, search
-  Serial.begin(serialInputNumber); // Make console listen to serial input
+//  Serial.begin(serialInputNumber); // Make console listen to serial input
   servoLeft.attach(leftWheelPin);
   servoRight.attach(rightWheelPin);
   servoClaw.attach(clawPin);
@@ -191,7 +196,9 @@ void setup() { // Built in initialization block
   digitalWrite(IRFLedRight, LOW);
   pinMode(IRFSensor5Voltage, OUTPUT);
   digitalWrite(IRFSensor5Voltage, LOW);
-  turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarServoSeq], 100); // full rotation of servo is 250 miliseconds
+  turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarServoSeq], 150); // full rotation of servo is 250 miliseconds
+  pinMode(firstSonarPingTrigerPin, OUTPUT);
+  pinMode(secondSonarPingTrigerPin, OUTPUT);
 }
 
 
@@ -219,25 +226,25 @@ void loop() {
       state 8: Robot release the Obstacle --------> go to state 9
       stage 9: Robot turns away from goal area ---------> go to state 0 (start all over again)
   */
-
-  if (currentState == 0) //Default status                                                    ////////////////////////////////////State 0
+ //maneuver(0, 0);
+  if (currentState == 0) //Default status  ------------------------------------------////////////////////////////////////State 0
   {
 
     maneuver(100, 100);
     sonarServoSeq += inc;
     incTemp = inc;
-    if ((sonarServoSeq < 1) || (sonarServoSeq > elementScanSequence - 2 )) inc = -inc;                     // Change inc/dec value if limit reached
+    if ((sonarServoSeq < 1) || (sonarServoSeq > elementScanSequence - 2 )) inc = -inc;                     
     int tempValue1 = 0;
     int tempValue2 = 0;
-    for (int t = 0; t < avgSonarNum; t++) {
+    for (int t = 0; t < avgSonarWander; t++) {
       tempValue1 += cmDistance(1);
       tempValue2 += cmDistance(2);
     }
-    upSonarRead = tempValue1 / avgSonarNum;
-    downSonarRead = tempValue2 / avgSonarNum;
-    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarServoSeq], 100);
+    upSonarRead = tempValue1 / avgSonarWander;
+    downSonarRead = tempValue2 / avgSonarWander;
+    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarServoSeq], 150);
     if (!clawGrippedObjectFlag) {
-      if ((tempValue1 > 10000) || (tempValue2 > 10000)) {
+      if ((tempValue1 == 1100) || (tempValue2 == 1100)) {
         distanceDiffSonarsRead = 0;
       } else {
         distanceDiffSonarsRead = abs(upSonarRead - downSonarRead);
@@ -262,7 +269,7 @@ void loop() {
       }
     }
   }
-  else if (currentState == 1)                                                ///////////////////////////////////////////State 1
+  else if (currentState == 1) -------------------------------------------------///////////////////////////////////////////State 1
   {
     if (upSonarRead < tooCloseCmSonarReading)
     {
@@ -279,13 +286,17 @@ void loop() {
     };
 
 
-  } else if (currentState == 2) // Turn away from wall                                    ///////////////////////////////state 2
+  } else if (currentState == 2) // Turn away from wall------------------------------------///////////////////////////////state 2
   {
     WallCornerAvoidance();
     currentState = 0;
 
-  } else if (currentState == 3) //Get close to obstacle                                    ///////////////////////////////state 3
+  } else if (currentState == 3) //Get close to obstacle -----------------------------------///////////////////////////////state 3
   {
+     if (NoPickObstacle()) {
+      turnAwayFromGoalArea();
+      currentState = 0;
+     } else{
     int tempDeg = getObjectRobotRelAngle(1, angleValueofsequenceOfScan[sonarServoSeq - incTemp]);
     int tempReturn = GetCloseToObstacle(tempDeg);
 
@@ -295,41 +306,40 @@ void loop() {
     } else
     {
       currentState = 0;
-      turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarServoSeq], 100);
+      turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarServoSeq], 150);
     };
   }
-  else if (currentState == 4)                                                              ///////////////////////////////state 4
+  }
+  else if (currentState == 4) --------------------------------------------------------------///////////////////////////////state 4
   {
-    if (NoPickObstacle()) {
-      turnAwayFromGoalArea();
-      currentState = 0;
-    } else if (!clawGrippedObjectFlag)
+    digitalWrite(IRFSensor5Voltage, HIGH);
+    
+    if (!clawGrippedObjectFlag)
     {
       ClawGrip();
-      digitalWrite(IRFSensor5Voltage, HIGH);
+
     }
     currentState = 5;
   }
-  else if (currentState == 5) //find the IRF beacon                                           ///////////////////////////////state 5
+  else if (currentState == 5) //find the IRF beacon -----------------------------------------///////////////////////////////state 5
   {
     if (InitiateTurnTowardsGoalZoneState()) {
       currentState = 8;
     } else {
       moveTowardSafeFlag = GetDirectionToSafeZone();
       if (moveTowardSafeFlag) {
-        currentState = 6;   //Maybe to impliment different
+        currentState = 6;   
       } else {
         TempRandomWalk();
-        Serial.print("//////////////////");
       }
     }
-  } else if (currentState == 6) //move toward the goal area untill reaches there              ///////////////////////////////state 6
+  } else if (currentState == 6) //move toward the goal area untill reaches there-------------///////////////////////////////state 6
   {
     turnSonarServoToCertainDegree(angleValueofsequenceOfScan[8], 100);
     maneuver(100, 100);
     currentState = 7;
 
-  } else if (currentState == 7) //Enter with the right angle into the goal area               ///////////////////////////////state 7
+  } else if (currentState == 7) //Enter with the right angle into the goal area---------------///////////////////////////////state 7
   {
     tempReachGoalFlag = InitiateTurnTowardsGoalZoneState();
     if (tempReachGoalFlag == 1)
@@ -347,7 +357,7 @@ void loop() {
       }
     }
 
-  } else if (currentState == 8)  //release the obstacle                                      ///////////////////////////////state 8
+  } else if (currentState == 8) --------------------------------------------------------------///////////////////////////////state 8
   {
 
     if (clawGrippedObjectFlag)
@@ -358,13 +368,12 @@ void loop() {
       currentState = 0;
     }
 
-  } else if (currentState == 9)                                                              ///////////////////////////////state 9
+  } else if (currentState == 9)---------------------------------------------------------------///////////////////////////////state 9
   {
     digitalWrite(IRFSensor5Voltage, LOW);
     turnAwayFromGoalArea();
     currentState = 0;
   }
-
 }
 
 
@@ -397,7 +406,7 @@ boolean InitiateTurnTowardsGoalZoneState() {
       rightWheelRotSpeed = maxForwardSpeed;
     }
 
-    maneuver(leftWheelRotSpeed, rightWheelRotSpeed, 100);
+    maneuver(leftWheelRotSpeed, rightWheelRotSpeed, 200);
     maneuver(0, 0);
     if (checkPhototransistors()) {
       digitalWrite(IRFLedLeft, LOW);
@@ -428,7 +437,7 @@ boolean checkIfAtEdge() {
 void turnAwayFromGoalArea() {
   int turnTimer = 540; // Turn timer about 180 degree /180*6 miliseconds
   int thisSpeed = 200;
-  int thisTurnTime = 2000;
+  int thisTurnTime = 1000;
   maneuver(-thisSpeed, -thisSpeed, 1000);
   maneuver(thisSpeed, -thisSpeed, turnTimer);
   maneuver(thisSpeed, thisSpeed, thisTurnTime);
@@ -506,7 +515,12 @@ float getVoltsByPin(int adPin) {
 
 //Do not pick up any obstacle from Safe zone
 boolean NoPickObstacle() {
-  return (sensorBelowThreshold(rightPhototransistor) || sensorBelowThreshold(leftPhototransistor));
+  digitalWrite(IRFLedLeft, HIGH);
+  digitalWrite(IRFLedRight, HIGH);
+  boolean temp=(sensorBelowThreshold(rightPhototransistor) && sensorBelowThreshold(leftPhototransistor));
+  digitalWrite(IRFLedLeft, LOW);
+  digitalWrite(IRFLedRight, LOW);
+  return temp;
 }
 
 
@@ -570,7 +584,10 @@ int cmDistance(int num)
     distance = us / usTocm / 2; // Convert to cm measurement
     delay(3);                                      // Pause before retry (if needed)
   } while ((distance == 0) && (iter < maxIter));                         //To cancel the error of Sonar reading and reduce noise
-  if (distance == 0) distance = 100000;
+  if (distance == 0)
+  {
+    distance = 1100;
+  }
   return abs(distance);                                 // Return distance measurement
 }
 
@@ -614,7 +631,7 @@ void WallCornerAvoidance() {
       if ( (sequenceOfScan[k] >= minIndexOfSequenceCollisionAvoidance) && (sequenceOfScan[k] <= maxIndexOfSequenceCollisionAvoidance) && (cm1[k] < tooCloseCmSonarReading)) {
         maneuver(0, 0);
         int turnAngle = FindOpenRoam(k); // Get opening (in terms of sequence element
-        getObjectRobotRelAngle(1, turnAngle);
+        //   getObjectRobotRelAngle(1, turnAngle);
 
         int turnAngleTime = turnAngle * msPerTurnDegree;
         if (turnAngle > 90)                         // If negative turning angle,
@@ -734,15 +751,13 @@ int FindOpenRoam(int k) {                                                       
     }
   } while ((cm1[i] > tooCloseCmSonarReading) && (sequenceOfScan[i] != 0) && (sequenceOfScan[i] != 10) && (iter <= 2)); // 10 is the biggest number in the sequences
 
-
-  finalTurnAngle = sequenceOfScan[i];                                  // Record final Sonar servo position
-  int middleAngle = initialTurnAngle + ((finalTurnAngle - initialTurnAngle) / 2);                      // Calculate middle of opening
+  finalTurnAngle = sequenceOfScan[i];                                                       // Record final Sonar servo position
+  int middleAngle = initialTurnAngle + ((finalTurnAngle - initialTurnAngle) / 2);           // Calculate middle of opening
   middleAngle *= degreesStepTurnSonarServo;
   angleMax *= degreesStepTurnSonarServo;
   i = findIn(5);
   servoSonarTheta = angleValueofsequenceOfScan[i];
   turnSonarServoToCertainDegree(servoSonarTheta, 250 / 2); //Bring the Sonar servo to middle
-
   if (minDistance < bumpedCmSonarReading + 1)                                    // Turn further if too close
   {
     if (middleAngle < angleMax) return angleMax; else return middleAngle;
@@ -805,15 +820,7 @@ double getObjectRobotRelAngle(double sensorReading, double sensorAngle) {
 */
 int GetCloseToObstacle(int degree) {      //////////////////////////////////Improvement also flags
 
-  if (degree < 90) {
-    maneuver(200, -200, (90 - degree)*msPerTurnDegree);
-    maneuver(0, 0);
-  } else if (degree > 90) {
-    maneuver(-200, 200, (degree - 90)*msPerTurnDegree);
-    maneuver(0, 0);
-  }
-
-  //int sequenceScan[] = {80,90,100 };
+  TurnBot(degree);
   boolean tempFlag = 0;
   int cm1Temp[sizeof(sequenceOfScan)];
   int cm2Temp[sizeof(sequenceOfScan)];
@@ -830,10 +837,10 @@ int GetCloseToObstacle(int degree) {      //////////////////////////////////Impr
   int tempDisCurrent;
   int delayFirsttime = 200;
   turnSonarServoToCertainDegree(angleValueofsequenceOfScan[0], 200);
-   cm1Temp[0] = cmDistance(1) ;
-     cm2Temp[0] = cmDistance(2);
-   for (int k = 1; k < elementScanSequence ; k++) {
-     turnSonarServoToCertainDegree(angleValueofsequenceOfScan[k], 50); // full rotation of servo is 250 miliseconds
+  cm1Temp[0] = cmDistance(1) ;
+  cm2Temp[0] = cmDistance(2);
+  for (int k = 1; k < elementScanSequence ; k++) {
+    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[k], 50); // full rotation of servo is 250 miliseconds
     tempValue1 = 0;
     tempValue2 = 0;
     for (int t = 0; t < avgSonarNum; t++) {
@@ -847,7 +854,7 @@ int GetCloseToObstacle(int degree) {      //////////////////////////////////Impr
   int tempDegree;
   int tempDegreeK;
   int diffTemp;
-  for (int k = 1; k < elementScanSequence ; k++) {
+  for (int k = 1; k < elementScanSequence ; k++) { // find closet obstacle
     temp1Distance = cm2Temp[findIn(k)];
     temp2Distance = cm2Temp[findIn(k - 1)];
     int tempWhatever = cm1Temp[findIn(k)];
@@ -866,14 +873,7 @@ int GetCloseToObstacle(int degree) {      //////////////////////////////////Impr
   tempDegree = (angleValueofsequenceOfScan[findIn(tempDegreeK)] + angleValueofsequenceOfScan[findIn(tempDegreeK - 1)]) / 2;
   if (flag) {
     temp = getObjectRobotRelAngle(minTempDistance * 0.01, tempDegree);
-
-    if (temp < 90) {
-      maneuver(200, -200, (90 - temp)*msPerTurnDegree);
-      maneuver(0, 0);
-    } else if (temp > 90) {
-      maneuver(-200, 200, (temp - 90)*msPerTurnDegree);
-      maneuver(0, 0);
-    }
+    TurnBot(temp);
     turnSonarServoToCertainDegree(90, 100);
     for (int j = 0; j < 40; j++) {
       maneuver(linearForwardSpeed, linearForwardSpeed);
@@ -945,8 +945,6 @@ boolean irRead(int  readPin) {
     delay(1);
 
     if (temp1 == 0) {
-      //     Serial.println(i);
-      //     delay(2000);
       return 1;
     }
 
@@ -971,83 +969,94 @@ boolean GetDirectionToSafeZone() {
   }
   maneuver(0, 0);
   boolean flag = 0;
-
-  for (int k = 0; k < elementScanSequence ; k++) {
-    tempDegree = angleValueofsequenceOfScan[k];
-    turnSonarServoToCertainDegree(tempDegree, 100); // full rotation of servo is 250 miliseconds
-    if (irRead(IRFReceiverPinRight) == 1) {
-      flag = 1;
-      break;
-    }
-    if (irRead(IRFReceiverPinLeft) == 1) {
-      guessedTemp += angleValueofsequenceOfScan[k];
-      guessedTempNum++;
-    }
-  } //FOR k
-
-  if (flag) {
-    temp = getObjectRobotRelAngle(1, tempDegree);
-    if (temp < 90) {
-      maneuver(200, -200, (90 - temp)*msPerTurnDegree);
-      maneuver(0, 0);
-    } else if (temp > 90) {
-      maneuver(-200, 200, (temp - 90)*msPerTurnDegree);
-      maneuver(0, 0);
-    }
-    return 1;
-  } else if (~guessedTempNum)
-  {
-    maneuver(200, -200, (180)*msPerTurnDegree); //Full rotate
-    maneuver(0, 0);
-    return 0;
+  for (int i = 0; i < 2; i++) {
+    if (flag) break;
+    for (int k = 0; k < elementScanSequence ; k++) {
+      tempDegree = angleValueofsequenceOfScan[k];
+      turnSonarServoToCertainDegree(tempDegree, 100); // full rotation of servo is 250 miliseconds
+      if (irRead(IRFReceiverPinRight) == 1) {
+        flag = 1;
+        break;
+      }
+      if (irRead(IRFReceiverPinLeft) == 1) {
+        guessedTemp += angleValueofsequenceOfScan[k];
+        guessedTempNum++;
+      }
+ }
+      if (flag) {
+        temp = getObjectRobotRelAngle(1, tempDegree);
+        TurnBot(temp);
+        return 1;
+      } else if (~guessedTempNum)
+      {
+        maneuver(200, -200, (180)*msPerTurnDegree); //Full rotate
+        maneuver(0, 0);
+      } else {
+        temp = guessedTemp / guessedTempNum;
+        temp = getObjectRobotRelAngle(1, temp);
+        TurnBot(temp);
+        maneuver(100, 100, 1200);
+        maneuver(0, 0);
+        return 0;
+      }
+   
   }
-  temp = guessedTemp / guessedTempNum;
-  if (temp < 90) {
-    maneuver(200, -200, (90 - temp)*msPerTurnDegree);
-    maneuver(0, 0);
-  } else if (temp > 90) {
-    maneuver(-200, 200, (temp - 90)*msPerTurnDegree);
-    maneuver(0, 0);
-  }
-  maneuver(100, 100, 1200);
-  maneuver(0, 0);
-
+  return 0;
 } //function
 
 
-//Initiale random walk while graping the obstacles
+/*
+ * Initiale random walk while graping the obstacles
+ */
 void TempRandomWalk() {
+  maneuver(0, 0);
+  turnSonarServoToCertainDegree(90, 100);
   int sonarSeq = minIndexOfSequenceCollisionAvoidance - 1;
   int inc = 1;
   int incTemp;
-  for (int i = 0; i < 10; i++) {
+  int upSonar;
+  for (int i = 0; i < 20; i++) {
     maneuver(100, 100);
     sonarSeq += inc;
     incTemp = inc;
     if ((sonarSeq < 1) || (sonarSeq > elementScanSequence - 2 )) inc = -inc;                     // Change inc/dec value if limit reached
+    int tempValue = angleValueofsequenceOfScan[sonarSeq];
+    if ((tempValue < 10) || (tempValue > 170)) continue;
     int tempValue1 = 0;
-    int tempValue2 = 0;
     for (int t = 0; t < 2; t++) {
       tempValue1 += cmDistance(1);
-      tempValue2 += cmDistance(2);
     }
-    int upSonar = tempValue1 / 2;
-    int downRead = tempValue2 / 2;
+    upSonar = tempValue1 / 2;
 
-    if (irRead(IRFReceiverPinLeft)) {
+    if (irRead(IRFReceiverPinRight)) {
+      //      TurnBot(tempValue);
       break;
     }
-    
-    turnSonarServoToCertainDegree(angleValueofsequenceOfScan[sonarSeq], 50);
-    if (upSonarRead < 25) {
+
+    turnSonarServoToCertainDegree(tempValue, 100);
+    if (upSonar < 25) {
       WallCornerAvoidance();
     } else {
-      maneuver(maxForwardSpeed, maxForwardSpeed, 500); //Move forward
-      maneuver(0, 0);
+      maneuver(maxForwardSpeed, maxForwardSpeed); //Move forward
+
     }
   }
+  maneuver(0, 0);
 }
 
+/*
+ * To turn the robott in certain angle
+ */
+void TurnBot(int degree) {
+
+  if ( degree < 90) {
+    maneuver(200, -200, (90 -  degree)*msPerTurnDegree);
+    maneuver(0, 0);
+  } else if (degree > 90) {
+    maneuver(-200, 200, ( degree - 90)*msPerTurnDegree);
+    maneuver(0, 0);
+  }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////// DEBUGGERS ///////////////////////////////////////////////
 //
