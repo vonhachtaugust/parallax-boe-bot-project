@@ -182,7 +182,7 @@ boolean flagFirstTimeGrabObstacle = 0;
 void setup() { // Built in initialization block
 
   currentState = 0;                                                       //               initial state, search
-  Serial.begin(serialInputNumber); // Make console listen to serial input
+//  Serial.begin(serialInputNumber); // Make console listen to serial input
   servoLeft.attach(leftWheelPin);
   servoRight.attach(rightWheelPin);
   servoClaw.attach(clawPin);
